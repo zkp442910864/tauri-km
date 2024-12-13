@@ -4,7 +4,7 @@ export default defineConfig({
     // ...UnoCSS options
     presets: [
         presetUno({ prefix: 'un-', preflight: false, }),
-        // presetIcons({}),
+        presetIcons({}),
     ],
     variants: [
         // 支持 `!` 前缀，使规则优先级更高
