@@ -253,7 +253,7 @@ interface IPageLifeCycleCallback {
     (type: ELifeCycleType.SEARCH, local: ReturnType<typeof useLocation>): void;
     (type: ELifeCycleType.DEACTIVATED | ELifeCycleType.UNMOUNTED, local?: ReturnType<typeof useLocation>): void;
 }
-enum ELifeCycleType {
+export enum ELifeCycleType {
     /** 挂载前 */
     BEFORE_MOUNT = 'beforeMount',
     /** 挂载后 */
