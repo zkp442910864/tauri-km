@@ -6,6 +6,25 @@
         "main"
     ],
     "permissions": [
-        "core:default"
+        "core:default",
+        "shell:allow-open",
+        {
+            "identifier": "http:default",
+            "allow": [
+                {
+                    "url": "https://chonchow.com"
+                },
+                {
+                    "url": "https://*.amazon.com"
+                }
+            ],
+            "deny": []
+        },
+        "fs:write-all",
+        "fs:read-all",
+        {
+            "identifier": "fs:scope",
+            "allow": [{ "path": "//**" },{ "path": "$DESKTOP" }, { "path": "$DESKTOP/**" },  { "path": "$DESKTOP/**/**" }]
+        }
     ]
 }
