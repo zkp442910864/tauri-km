@@ -13,17 +13,14 @@
         "windows": [
             {
                 "title": "tauri-km",
-                "width": 800,
-                "height": 600,
+                "width": 960,
+                "height": 960,
                 "resizable": true,
                 "fullscreen": false
             }
         ],
         "security": {
-            "csp": null,
-            "pattern": {
-                "use": "brownfield"
-            }
+            "csp": null
         }
     },
     "bundle": {
