@@ -2,6 +2,7 @@ import { alphabetical, crush, omit } from 'radash';
 import { IAmazonData, IDetailContentRoot, IOtherData, TThenData } from './index.type';
 import { LogOrErrorSet } from '@/utils';
 import { image } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 
 export class Compare {
     amazon_data: TThenData;
@@ -116,15 +117,17 @@ export class Compare {
                 if (shopify_val.length !== amazon_val.length) {
                     is_update = true;
                     msgs.push('banner_imgs');
+                    await this.download_imgs(amazon.sku, 'banner', amazon_val);
                 }
-                else if (await this.compare_imgs(shopify_val, amazon_val)) {
+                else if (await this.compare_imgs(shopify.sku, 'banner', shopify_val, amazon_val)) {
                     is_update = true;
                     msgs.push('content_json.2');
                 }
             }
             else if (shopify_item.type === 'get_price') {
                 const shopify_val = shopify_item.data as IOtherData;
-                const amazon_val = amazon_item.data as IOtherData;
+                // 抓取数据出错了,导致对象有了,值没有
+                const amazon_val = (amazon_item.data || {}) as IOtherData;
 
                 if (shopify_val.price !== amazon_val.price || shopify_val.old_price !== amazon_val.old_price) {
                     is_update = true;
@@ -150,7 +153,8 @@ export class Compare {
             }
             else if (shopify_item.type === 'get_desc_text') {
                 const shopify_val = shopify_item.data as string;
-                const amazon_val = amazon_item.data as IOtherData;
+                // 抓取数据出错了,导致对象有了,值没有
+                const amazon_val = (amazon_item.data || {}) as IOtherData;
                 if (shopify_val !== amazon_val.text) {
                     is_update = true;
                     msgs.push('desc_text');
@@ -175,15 +179,20 @@ export class Compare {
 
                     if (shopify_imgs.length !== amazon_imgs.length) {
                         is_update = true;
-                        msgs.push('content_json.1');
+                        msgs.push('content_json.1.img_content');
+                        await this.download_imgs(amazon.sku, 'desc', amazon_imgs);
                     }
-                    else if (await this.compare_imgs(shopify_imgs, amazon_imgs)) {
+                    else if (await this.compare_imgs(shopify.sku, 'desc', shopify_imgs, amazon_imgs)) {
                         is_update = true;
-                        msgs.push('content_json.2');
+                        msgs.push('content_json.2.img_content');
                     }
-                    else if (this.sort_json(shopify_json_val) !== this.sort_json(omit(amazon_json_val, ['img_urls',]) as unknown as Record<string, unknown>)) {
+
+                    if (this.sort_json(shopify_json_val) !== this.sort_json(omit(amazon_json_val, ['img_urls',]) as unknown as Record<string, unknown>)) {
+                        console.log(this.sort_json(shopify_json_val));
+                        console.log(this.sort_json(omit(amazon_json_val, ['img_urls',])));
+
                         is_update = true;
-                        msgs.push('content_json.3');
+                        msgs.push('content_json');
                     }
                 }
                 catch (error) {
@@ -209,9 +218,27 @@ export class Compare {
     }
 
     /** TODO: 图片内容对比 */
-    compare_imgs(urls1: string[], urls2: string[]) {
-        // image.transformImage(url)
+    async compare_imgs(sku: string, folder_type: 'banner' | 'desc', shopify_urls: string[], amazon_urls: string[]) {
+        // const res = await invoke<string>('task_images_diff', {
+        //     sku,
+        //     folderType: folder_type,
+        //     shopifyUrls: shopify_urls.map(ii => ii.replace('//', 'https://')),
+        //     amazonUrls: amazon_urls,
+        // });
+        // const json = JSON.parse(res) as ITauriResponse<boolean>;
+        // return json.data;
         return Promise.resolve(false);
+    }
+
+    /** 图片下载 */
+    async download_imgs(sku: string, folder_type: 'banner' | 'desc', urls: string[]) {
+        const res = await invoke<string>('task_download_imgs', {
+            sku,
+            folderType: folder_type,
+            urls,
+        });
+        const json = JSON.parse(res) as ITauriResponse<null>;
+        return json.status === 1;
     }
 }
 

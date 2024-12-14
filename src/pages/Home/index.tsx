@@ -1,21 +1,17 @@
 
-import { ShopifyAction } from './modules/core/shopify_action';
-import { Button, Splitter } from 'antd';
-import { AmazonAction } from './modules/core/amazon_action';
+import { useCacheValue, useStateExtend } from '@/hooks';
 import { LogOrErrorSet } from '@/utils';
-import { Compare, CompareData } from './modules/core/compare';
-import { useStateExtend } from '@/hooks';
+import { Button, Input, Splitter } from 'antd';
 import { useRef } from 'react';
 import { ContentBox } from './components/ContentBox';
-import { RenderCode } from './components/RenderCode';
-import { ResultData } from './components/ResultData';
-import { RenderLogs } from './components/RenderLogs';
 import { DataQuery } from './components/DataQuery';
+import { RenderCode } from './components/RenderCode';
+import { RenderLogs } from './components/RenderLogs';
+import { ResultData } from './components/ResultData';
+import { AmazonAction } from './modules/core/amazon_action';
+import { Compare, CompareData } from './modules/core/compare';
+import { ShopifyAction } from './modules/core/shopify_action';
 import { invoke } from '@tauri-apps/api/core';
-import { BaseDirectory, desktopDir, join, resourceDir } from '@tauri-apps/api/path';
-import * as fs from '@tauri-apps/plugin-fs';
-import { file_temp } from './modules/file_temp';
-import { image } from '@tauri-apps/api';
 
 // console.log(resourceDir());
 // desktopDir
@@ -24,22 +20,32 @@ import { image } from '@tauri-apps/api';
 const Home = () => {
 
     const [, update,] = useStateExtend({});
+    const [assign_skus, set_assign_skus,] = useCacheValue('assign_skus', '');
     const { current: state, } = useRef({
         result: [] as CompareData[],
+        // assign_skus: '',
         render_code: '',
         render_type: 'json',
         loading: false,
         shopify_domain: 'https://chonchow.com',
         amazon_domain: 'https://www.amazon.com',
+        amazon_collection_urls: [
+            '/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5',
+            '/stores/page/6FF02BCB-060B-4B12-A07F-6C60EFC143F3',
+            '/stores/page/BBF5BC86-5FA2-4520-A0DC-750B13670037',
+        ],
+        shopify_background_domain: 'https://admin.shopify.com/store/jvrwsa-aj',
     });
 
     const shopify_fn = async () => {
-        const data = await new ShopifyAction();
+        const inline_assign_skus = assign_skus ? assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => ii) : [];
+        const data = await new ShopifyAction(state.shopify_domain, inline_assign_skus);
         console.log(data);
     };
 
     const amazon_fn = async () => {
-        const data = await new AmazonAction();
+        const inline_assign_skus = assign_skus ? assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => ii) : [];
+        const data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, inline_assign_skus);
         console.log(data);
     };
 
@@ -81,9 +87,17 @@ const Home = () => {
         //         ],
         //     });
         // }
+        {
+            const res = await invoke<string>('task_download_imgs', {
+                sku: 'xxx',
+                folderType: 'banner',
+                urls: [
+                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+                ],
+            });
+        }
     };
-
-
 
 
     /** 设置高亮代码 */
@@ -111,24 +125,36 @@ const Home = () => {
         setLoading(true);
 
         LogOrErrorSet.get_instance().capture_error(async () => {
+            const inline_assign_skus = assign_skus ? assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => ii) : [];
             const start = performance.now();
-            const shopify_data = await new ShopifyAction();
-            const amazon_data = await new AmazonAction();
+            const shopify_data = await new ShopifyAction(state.shopify_domain, inline_assign_skus);
+            const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, inline_assign_skus);
 
             const data = await new Compare(amazon_data, shopify_data).start();
             // console.log(data);
             state.result = data;
             setLoading(false);
 
-            const excute_time = performance.now() - start;
-            LogOrErrorSet.get_instance().push_log(`总计执行: ${excute_time}ms, ${(excute_time / 1000 / 60).toFixed(2)}m`);
+            const execute_time = performance.now() - start;
+            LogOrErrorSet.get_instance().push_log(`总计执行: ${execute_time}ms, ${(execute_time / 1000).toFixed(2)}m, ${(execute_time / 1000 / 60).toFixed(2)}m`);
         });
     };
 
     return (
         <div className="p-t-20">
             <div id="hidden-text" className="un-w-0 un-h-0 un-opacity0"></div>
-            <div className="flex un-gap-8px un-w-150px p-x-20">
+            <div className="flex un-gap-8px p-x-20">
+                <Input
+                    name="sku"
+                    className=" un-w-300px"
+                    autoComplete="on"
+                    addonBefore="指定SKU"
+                    placeholder="逗号或空格间隔"
+                    value={assign_skus}
+                    onChange={(e) => {
+                        void set_assign_skus(e.target.value);
+                    }}
+                />
                 <Button type="primary" onClick={() => void action()}>运行</Button>
                 <Button type="primary" onClick={() => void test()}>test</Button>
                 {/* <Button type="primary" onClick={() => void shopify_fn()}>1: shopify</Button> */}
@@ -156,6 +182,7 @@ const Home = () => {
                                         <ResultData
                                             result={state.result}
                                             shopify_domain={state.shopify_domain}
+                                            shopify_background_domain={state.shopify_background_domain}
                                             amazon_domain={state.amazon_domain}
                                             onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
                                         />

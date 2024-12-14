@@ -13,9 +13,10 @@ use tauri::command;
 use tokio::task;
 
 pub use amazon_mod::task_find_amazon_sku;
-pub use common_mod::task_fetch_html;
 pub use common_mod::task_create_folder;
+pub use common_mod::task_fetch_html;
 pub use common_mod::task_images_diff;
+pub use common_mod::task_download_imgs;
 
 #[command]
 pub async fn take_screenshot_v2(url: String) -> Result<String, String> {

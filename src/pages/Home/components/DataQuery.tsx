@@ -49,6 +49,7 @@ export const DataQuery: FC<{className?: string, onClick: (data: unknown) => void
                                 click({
                                     stack: (data[state.input] as Error)?.stack,
                                     message: (data[state.input] as Error)?.message,
+                                    raw_error: data[state.input],
                                 });
                             }
                             else {

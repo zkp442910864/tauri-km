@@ -1,4 +1,4 @@
-import { handle_number, LogOrErrorSet } from '@/utils';
+import { get_real_dom_text, handle_number, LogOrErrorSet } from '@/utils';
 import { core } from '@tauri-apps/api';
 import { stringify } from 'qs';
 import { parallel, retry, sleep } from 'radash';
@@ -20,12 +20,16 @@ export class AmazonAction {
     };
     thenFn?: (data: TThenData) => void;
     catchFn?: (err: unknown) => void;
+    assign_skus: string[] = [];
     sku_data: IAmazonData[] = [];
     sku_map: Record<string, IAmazonData> = {};
     /** 重试次数 */
     retry_count = 3;
 
-    constructor() {
+    constructor(domain: string, collection_urls: string[], assign_skus: string[]) {
+        this.domain = domain;
+        this.collection_urls = collection_urls;
+        this.assign_skus = assign_skus;
         void this.init();
     }
 
@@ -33,19 +37,35 @@ export class AmazonAction {
 
         LogOrErrorSet.get_instance().push_log('亚马逊数据处理开始', { title: true, });
 
-        // this.set_test_data();
-        await this.fetch_all_sku(this.collection_urls.map(ii => `${this.domain}${ii}`));
+        if (this.assign_skus.length) {
+            this.handle_assign_skus();
+        }
+        else {
+            await this.fetch_all_sku(this.collection_urls.map(ii => `${this.domain}${ii}`));
+        }
         await this.for_fetch_sku_detail(`${this.domain}${this.product_url}`);
 
         this.thenFn?.({ sku_data: this.sku_data, sku_map: this.sku_map, });
         LogOrErrorSet.get_instance().push_log(`亚马逊数据处理结束, 总条数${this.sku_data.length} \n ${LogOrErrorSet.get_instance().save_data(this.sku_data)}`, { title: true, });
     }
 
-    set_test_data() {
-        // "B07DQW1KKB" "B0BF9R58R2" "B09T3DWY2R" "B09T3CW2XZ" "B0CG4D1NSV" "B0B2PH38Z4"
-        const data = { sku: 'B0CJXY9Z5D', };
-        this.sku_data.push(data);
-        this.sku_map[data.sku] = data;
+    push_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
+        const key = sku.toLocaleUpperCase();
+        if (!this.sku_map[key]) {
+            const new_sku_item = { sku: key, };
+            sku_map[key] = new_sku_item;
+            sku_data.push(new_sku_item);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    handle_assign_skus() {
+        this.assign_skus.forEach(sku => {
+            this.push_sku(sku);
+        });
     }
 
     /** 获取所有sku */
@@ -64,11 +84,7 @@ export class AmazonAction {
                 json_data.data?.forEach((str) => {
                     const match_data = str.match(/^amzn1.asin.(\w+)/i);
                     if (match_data) {
-                        const key = match_data[1].toLocaleUpperCase();
-                        const data = { sku: key, };
-
-                        sku_data.push(data);
-                        sku_map[key] = data;
+                        this.push_sku(match_data[1], sku_data, sku_map);
                     }
                     else {
                         LogOrErrorSet.get_instance().push_log(`正则匹配失败: ${str}`, { repeat: true, is_fill_row: true, error: true, });
@@ -180,19 +196,11 @@ export class AmazonAction {
             }
         };
 
-        const get_desc_text = (dom: Document) => {
+        const get_desc_text = async (dom: Document) => {
             try {
                 const el: HTMLElement = dom.querySelector('#feature-bullets>ul')!;
                 const html = el.outerHTML;
-
-                const div = document.createElement('div');
-                document.querySelector('#hidden-text')!.appendChild(div);
-
-                div.innerHTML = html;
-                const text = div.innerText.trim();
-
-                div.remove();
-
+                const text = await get_real_dom_text(html);
                 return new IHtmlParseData('get_desc_text', { html, text: text, });
             }
             catch (error) {
@@ -201,6 +209,7 @@ export class AmazonAction {
         };
 
         const get_features_specs = (dom: Document) => {
+            // TODO:需要一个补偿措施 Features & Specs
 
             const target_title_el = [...dom.querySelectorAll<HTMLSpanElement>('span.a-expander-prompt'),].find(ii => ii.innerText.trim() === 'Features & Specs');
             // console.log(target_title_el);
@@ -325,11 +334,18 @@ export class AmazonAction {
 
                             row.length && pushRow(row, arr);
                         }
+                        else if (item.querySelector('.apm-fixed-width .apm-flex')) {
+                            const row: IDetailContentData[] = [];
+                            each([item.querySelector('.apm-fixed-width .apm-flex')!,], row);
+
+                            row.length && pushRow(row, arr, 'average-width');
+                        }
                         // 识别列
                         else if (
                             item.classList.contains('apm-sidemodule-textleft') ||
                             item.classList.contains('apm-centerthirdcol') ||
                             item.classList.contains('apm-sidemodule-textright') ||
+                            item.classList.contains('apm-flex-item-third-width') ||
                             item.classList.contains('apm-rightthirdcol')
                         ) {
                             const columns: IDetailContentData[] = [];
@@ -351,7 +367,7 @@ export class AmazonAction {
                         else if (item.nodeName === 'LI') {
                             pushText(item as HTMLDivElement, arr, 'marker');
                         }
-                        else if (item.nodeName === 'P') {
+                        else if (item.nodeName === 'P' && !item.querySelector('img')) {
                             const style = item.outerHTML.match(/bold/i) ? 'bold' : undefined;
                             pushText(item as HTMLDivElement, arr, style);
                         }
@@ -372,6 +388,9 @@ export class AmazonAction {
             };
 
             try {
+                // window.dddd = dom;
+                // window.asdasd = each;
+                // console.log(dom, each);
                 // each(dom.querySelectorAll('.aplus-module'));
                 each(dom.querySelectorAll('#aplus_feature_div #aplus .aplus-module'));
                 return new IHtmlParseData('get_content_json', JSON.stringify(data));
@@ -381,15 +400,20 @@ export class AmazonAction {
             }
         };
 
-        await parallel(1, skus, async (sku) => {
+        await parallel(3, skus, async (sku) => {
             const fullUrl = `${url}/${sku}?${stringify({ ...this.fixed_params, })}`;
 
             try {
                 LogOrErrorSet.get_instance().push_log(`获取数据开始: ${fullUrl}`, { repeat: true, });
-                let fail_count = 0;
+                const fail_count = 0;
                 const fn = async () => {
                     const res = await retry({ times: this.retry_count, delay: 1000, }, () => core.invoke<string>('task_fetch_html', { url: fullUrl, }));
                     const json_data = JSON.parse(res) as ITauriResponse<string>;
+                    if (json_data.status === 0) {
+                        LogOrErrorSet.get_instance().push_log(`可能遇到验证页面: ${fullUrl} \n ${LogOrErrorSet.get_instance().save_error(json_data)}`, { error: true, is_fill_row: true, });
+                        return;
+                    }
+
                     const html = json_data.data || '';
                     const domParser = new DOMParser();
                     const dom = domParser.parseFromString(html, 'text/html');
@@ -402,12 +426,7 @@ export class AmazonAction {
                         try {
                             const data = get_model(dom);
                             Object.keys(data).forEach((sku) => {
-                                if (!this.sku_map[sku]) {
-                                    const new_sku_item = { sku, };
-                                    this.sku_map[sku] = new_sku_item;
-                                    this.sku_data.push(new_sku_item);
-                                    variant_skus.push(sku);
-                                }
+                                variant_skus.push(sku);
                             });
                         }
                         catch (error) {
@@ -429,7 +448,7 @@ export class AmazonAction {
                         // 商品详情
                         parse_data.push(get_detail(dom));
                         // 商品描述文案
-                        parse_data.push(get_desc_text(dom));
+                        parse_data.push(await get_desc_text(dom));
                         // 商品功能与规格
                         parse_data.push(get_features_specs(dom));
                         // 商品详情内容(图 + 数据json)
@@ -438,15 +457,16 @@ export class AmazonAction {
                         parse_data.push(new IHtmlParseData('amazon_address_url', fullUrl));
 
                         const error_data = parse_data.find(ii => !!ii.error);
-                        if (!!error_data && fail_count < this.retry_count - 1) {
-                            fail_count++;
-                            // console.error(error_data);
-                            throw new Error('存在获取失败,进行重试');
-                        }
-                        else if (error_data) {
+                        // if (!!error_data && fail_count < this.retry_count - 1) {
+                        //     fail_count++;
+                        //     // console.error(error_data);
+                        //     throw new Error('存在获取失败,进行重试');
+                        // }
+                        // else
+                        if (error_data) {
                             const key = LogOrErrorSet.get_instance().save_error(error_data);
                             LogOrErrorSet.get_instance().push_log(`获取数据错误: \n ${fullUrl} \n ${key}`, { error: true, repeat: true, is_fill_row: true, });
-                            return false;
+                            // return false;
                         }
 
                         this.sku_map[sku].detail = parse_data;
@@ -468,8 +488,9 @@ export class AmazonAction {
             }
         });
 
+        return this.assign_skus.length ? [] : variant_skus;
         // return [];
-        return variant_skus;
+        // return variant_skus;
     }
 
     /** 循环执行 fetch_sku_detail 的逻辑,因为分类页面存在 变体 不显示的情况 */
@@ -483,7 +504,11 @@ export class AmazonAction {
 
         while (execute) {
             if (skus.length) {
-                skus = await this.fetch_sku_detail(url, skus);
+                const variant_skus = await this.fetch_sku_detail(url, skus);
+                skus = [];
+                variant_skus.forEach((sku) => {
+                    this.push_sku(sku) && skus.push(sku);
+                });
             }
             else {
                 execute = false;

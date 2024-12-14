@@ -9,8 +9,9 @@ type TParseType = 'get_title' |
     'get_features_specs' |
     'get_content_json' |
     'get_sku_model' |
+    'shopify_product_id' |
     'get_content_imgs';
-type TParseData = IHtmlParseData<IOtherData | string | string[] | null>;
+type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -34,6 +35,7 @@ interface IShopifyProductData {
     features_specs?: string | null;
     content_imgs?: string[] | null;
     content_json?: string | null;
+    shopify_product_id: number,
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~

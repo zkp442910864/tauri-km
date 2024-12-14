@@ -1,4 +1,4 @@
-import { handle_number, LogOrErrorSet } from '@/utils';
+import { get_real_dom_text, handle_number, LogOrErrorSet } from '@/utils';
 import { fetch } from '@tauri-apps/plugin-http';
 import { stringify } from 'qs';
 import { parallel, retry } from 'radash';
@@ -6,34 +6,54 @@ import { IHtmlParseData, IOtherData, IShopifyData, IShopifyProductData, TParseDa
 
 export class ShopifyAction {
 
-    domain = 'https://chonchow.com';
+    domain;
     collection_url = '/collections/all';
     product_url = '/products';
+    assign_skus: string[] = [];
     sku_data: IShopifyData[] = [];
     sku_map: Record<string, IShopifyData> = {};
     thenFn?: (data: TThenData) => void;
     catchFn?: (err: unknown) => void;
     logs: string[] = [];
 
-    constructor() {
+    constructor(domain: string, assign_skus: string[]) {
+        this.domain = domain;
+        this.assign_skus = assign_skus;
         void this.init();
     }
 
     async init() {
         LogOrErrorSet.get_instance().push_log('shopify数据处理开始', { title: true, });
 
-        // this.set_test_data();
-        await this.fetch_all_sku(`${this.domain}${this.collection_url}`);
+        if (this.assign_skus.length) {
+            this.handle_assign_skus();
+        }
+        else {
+            await this.fetch_all_sku(`${this.domain}${this.collection_url}`);
+        }
         await this.fetch_sku_detail(`${this.domain}${this.product_url}`);
 
         this.thenFn?.({ sku_data: this.sku_data, sku_map: this.sku_map, });
         LogOrErrorSet.get_instance().push_log(`shopify数据处理结束, 总条数${this.sku_data.length} \n ${LogOrErrorSet.get_instance().save_data(this.sku_data)}`, { title: true, });
     }
 
-    set_test_data() {
-        const data = { sku: 'B0CJXY9Z5D', };
-        this.sku_data.push(data);
-        this.sku_map[data.sku] = data;
+    push_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
+        const key = sku.toLocaleUpperCase();
+        if (!this.sku_map[key]) {
+            const new_sku_item = { sku: key, };
+            sku_map[key] = new_sku_item;
+            sku_data.push(new_sku_item);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    handle_assign_skus() {
+        this.assign_skus.forEach(sku => {
+            this.push_sku(sku);
+        });
     }
 
     /** 获取所有sku */
@@ -59,12 +79,7 @@ export class ShopifyAction {
                     const domParser = new DOMParser();
                     const dom = domParser.parseFromString(html, 'text/html');
                     dom.querySelectorAll<HTMLLIElement>('#product-grid>li').forEach((item) => {
-                        if (item.dataset.sku) {
-                            const key = item.dataset.sku.toLocaleUpperCase();
-                            const data = { sku: key, };
-                            this.sku_data.push(data);
-                            this.sku_map[key] = data;
-                        }
+                        item.dataset.sku && this.push_sku(item.dataset.sku);
                     });
                 }
                 // LogOrErrorSet.get_instance().push_log(`获取数据完成: ${fullUrl}`, { repeat: true, });
@@ -106,7 +121,7 @@ export class ShopifyAction {
                         data.content_json = JSON.stringify(JSON.parse(description_json));
                     }
                     // this.sku_map[sku].detail = data;
-                    [this.sku_map[sku].detail, this.sku_map[sku].detail_map,] = this.convert_data(data);
+                    [this.sku_map[sku].detail, this.sku_map[sku].detail_map,] = await this.convert_data(data);
                 }
                 LogOrErrorSet.get_instance().push_log(`获取数据完成: ${fullUrl}`, { repeat: true, is_fill_row: true, });
             }
@@ -119,7 +134,7 @@ export class ShopifyAction {
     }
 
     /** 把数据转成亚马逊的结构,为后续对比简化逻辑 */
-    convert_data(data: IShopifyProductData) {
+    async convert_data(data: IShopifyProductData) {
         const new_data: TParseData[] = [];
 
         new_data.push(new IHtmlParseData('get_title', data.title));
@@ -142,12 +157,13 @@ export class ShopifyAction {
 
         new_data.push(new IHtmlParseData('get_sku_model', data.sku_model || ''));
         new_data.push(new IHtmlParseData('get_detail', data.detail || ''));
-        new_data.push(new IHtmlParseData('get_desc_text', data.desc_text || ''));
+        new_data.push(new IHtmlParseData('get_desc_text', await get_real_dom_text(data.desc_text || '')));
         new_data.push(new IHtmlParseData('get_features_specs', data.features_specs || ''));
         new_data.push(new IHtmlParseData('get_content_imgs', data.content_imgs || []));
         new_data.push(new IHtmlParseData('get_content_json', data.content_json || ''));
 
         new_data.push(new IHtmlParseData('amazon_address_url', data.amazon_address_url || ''));
+        new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));
 
         return [
             new_data,

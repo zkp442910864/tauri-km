@@ -1,10 +1,13 @@
 mod modules;
-use modules::{my_custom_command, take_screenshot_v2, task_create_folder, task_fetch_html, task_find_amazon_sku, task_images_diff};
+use modules::{
+    my_custom_command, take_screenshot_v2, task_create_folder, task_download_imgs, task_fetch_html, task_find_amazon_sku, task_images_diff
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_http::init())
@@ -26,6 +29,7 @@ pub fn run() {
             task_fetch_html,
             task_create_folder,
             task_images_diff,
+            task_download_imgs
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

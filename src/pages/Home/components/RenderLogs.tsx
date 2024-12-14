@@ -24,7 +24,7 @@ export const RenderLogs: FC<{loading: boolean, className?: string}> = ({ loading
                     ? <List
                         size="small"
                         bordered
-                        dataSource={log_or_error.logs}
+                        dataSource={log_or_error.logs.slice().reverse()}
                         renderItem={(log_msg) => {
                             const is_error = log_msg.match(/\[:error\]/);
                             const str = log_msg.replace('[:error]', '');
