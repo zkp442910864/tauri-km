@@ -1,30 +1,45 @@
 {
-    "$schema": "../gen/schemas/desktop-schema.json",
-    "identifier": "default",
-    "description": "enables the default permissions",
-    "windows": [
-        "main"
-    ],
-    "permissions": [
-        "core:default",
-        "shell:allow-open",
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "enables the default permissions",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "shell:allow-open",
+    {
+      "identifier": "http:default",
+      "allow": [
         {
-            "identifier": "http:default",
-            "allow": [
-                {
-                    "url": "https://chonchow.com"
-                },
-                {
-                    "url": "https://*.amazon.com"
-                }
-            ],
-            "deny": []
+          "url": "https://chonchow.com"
         },
-        "fs:write-all",
-        "fs:read-all",
         {
-            "identifier": "fs:scope",
-            "allow": [{ "path": "//**" },{ "path": "$DESKTOP" }, { "path": "$DESKTOP/**" },  { "path": "$DESKTOP/**/**" }]
+          "url": "https://*.amazon.com"
         }
-    ]
+      ],
+      "deny": []
+    },
+    "fs:write-all",
+    "fs:read-all",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        {
+          "path": "//**"
+        },
+        {
+          "path": "$DESKTOP"
+        },
+        {
+          "path": "$DESKTOP/**"
+        },
+        {
+          "path": "$DESKTOP/**/**"
+        }
+      ]
+    },
+    "clipboard-manager:default",
+    "clipboard-manager:allow-write-text"
+  ]
 }
