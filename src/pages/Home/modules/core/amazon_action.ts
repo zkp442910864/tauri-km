@@ -394,7 +394,7 @@ export class AmazonAction {
                 // console.log(dom, each);
                 // each(dom.querySelectorAll('.aplus-module'));
                 // each(dom.querySelectorAll('#aplus_feature_div #aplus .aplus-module'));
-                if (document.querySelector('#productDescription_feature_div #productDescription')) {
+                if (dom.querySelector('#productDescription_feature_div #productDescription')) {
                     each([dom.querySelector('#productDescription_feature_div #productDescription')!,]);
                 }
                 else {

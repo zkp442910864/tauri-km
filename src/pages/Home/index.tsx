@@ -73,20 +73,20 @@ const Home = () => {
         // {
         //     await file_temp.create('qweee/sswws.txt', new TextEncoder().encode('Hello world'));
         // }
-        // {
-        //     const res = await invoke<string>('task_images_diff', {
-        //         sku: 'xxx',
-        //         folderType: 'banner',
-        //         shopifyUrls: [
-        //             'https://chonchow.com/cdn/shop/files/download_24_bbf43735-a783-48bc-9cc1-2d2fa9ed0f9a.jpg?v=1731987839&width=1946',
-        //             'https://chonchow.com/cdn/shop/files/download_23_dccede46-1bf3-4d8c-9946-0a656bea4567.jpg?v=1731987839',
-        //         ],
-        //         amazonUrls: [
-        //             'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
-        //             'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
-        //         ],
-        //     });
-        // }
+        {
+            const res = await invoke<string>('task_amazon_images_diff_v2', {
+                sku: 'xxx',
+                folderType: 'banner',
+                shopifyUrls: [
+                    'https://chonchow.com/cdn/shop/files/download_23_dccede46-1bf3-4d8c-9946-0a656bea4567.jpg?v=1731987839',
+                    'https://chonchow.com/cdn/shop/files/download_24_bbf43735-a783-48bc-9cc1-2d2fa9ed0f9a.jpg?v=1731987839&width=1946',
+                ],
+                amazonUrls: [
+                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+                ],
+            });
+        }
         // {
         //     const res = await invoke<string>('task_download_imgs', {
         //         sku: 'xxx',
@@ -110,9 +110,9 @@ const Home = () => {
         //         });
         //     }
         // }
-        {
-            await invoke('take_test_check', { url: 'file:///C:/Users/zhouk/Desktop/Amazon.com.html', });
-        }
+        // {
+        //     await invoke('take_test_check', { url: 'file:///C:/Users/zhouk/Desktop/Amazon.com.html', });
+        // }
     };
 
 

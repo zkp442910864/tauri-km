@@ -220,9 +220,10 @@ export class Compare {
         return JSON.stringify(new_data);
     }
 
-    /** TODO: 图片内容对比 */
+    /** 图片内容对比 */
     async compare_imgs(sku: string, folder_type: 'banner' | 'desc', shopify_urls: string[], amazon_urls: string[]) {
-        // const res = await invoke<string>('task_images_diff', {
+        if (!shopify_urls.length && !amazon_urls.length) return false;
+        // const res = await invoke<string>('task_amazon_images_diff_v2', {
         //     sku,
         //     folderType: folder_type,
         //     shopifyUrls: shopify_urls.map(ii => ii.replace('//', 'https://')),
