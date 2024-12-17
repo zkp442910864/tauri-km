@@ -199,7 +199,7 @@ export class Compare {
                     }
                 }
                 catch (error) {
-                    LogOrErrorSet.get_instance().push_log(`json序列化失败: ${LogOrErrorSet.get_instance().save_data(error)}`, { error: true, is_fill_row: true, });
+                    LogOrErrorSet.get_instance().push_log(`json序列化失败: ${LogOrErrorSet.get_instance().save_error({ shopify_item, amazon_item, error, })}`, { error: true, is_fill_row: true, });
                     is_update = true;
                     msgs.push('content_json.4');
                 }

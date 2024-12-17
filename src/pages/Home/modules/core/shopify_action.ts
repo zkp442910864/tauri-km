@@ -39,7 +39,7 @@ export class ShopifyAction {
 
     push_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
         const key = sku.toLocaleUpperCase();
-        if (!this.sku_map[key]) {
+        if (!sku_map[key]) {
             const new_sku_item = { sku: key, };
             sku_map[key] = new_sku_item;
             sku_data.push(new_sku_item);
