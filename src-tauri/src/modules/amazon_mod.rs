@@ -32,28 +32,37 @@ use super::{
 pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
     // 加载更多,有就触发
     let trigger_more_btn = |tab: &Arc<Tab>| -> bool {
-        let buttons = tab.find_elements("button");
-
-        match buttons {
-            Ok(btns) => {
-                let btn = btns.into_iter().find(|item| {
-                    // let Ok(val) = item.get_inner_text().map_err(|e| format!("val {}", e));
-                    if let Ok(val) = item.get_inner_text() {
-                        // println!("button text: {}", val);
-                        val == "Show more"
-                    } else {
-                        false
-                    }
-                });
-                if let Some(btn_instance) = btn {
-                    let _ = btn_instance.click();
-                    true
-                } else {
-                    false
-                }
-            }
-            Err(_) => false,
+        let btn = tab.find_element("[class^=ShowMoreButton] button");
+        if let Ok(el) = btn {
+            let _ = el.click();
+            true
         }
+        else {
+            false
+        }
+
+        // let buttons = tab.find_elements("button");
+
+        // match buttons {
+        //     Ok(btns) => {
+        //         let btn = btns.into_iter().find(|item| {
+        //             // let Ok(val) = item.get_inner_text().map_err(|e| format!("val {}", e));
+        //             if let Ok(val) = item.get_inner_text() {
+        //                 // println!("button text: {}", val);
+        //                 val == "Show more"
+        //             } else {
+        //                 false
+        //             }
+        //         });
+        //         if let Some(btn_instance) = btn {
+        //             let _ = btn_instance.click();
+        //             true
+        //         } else {
+        //             false
+        //         }
+        //     }
+        //     Err(_) => false,
+        // }
     };
 
     // 判断 loading 存在
@@ -66,14 +75,13 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
     // 循环触发数据加载
     let each_more_data = move |tab: &Arc<Tab>| {
         push_web_log(WebLog::new_default("循环加载更多数据"));
-        let mut flag = true;
 
         // std::thread::sleep(Duration::from_secs(1));
-        while flag {
+        loop {
             if trigger_more_btn(tab) || has_loading(tab) {
-                std::thread::sleep(Duration::from_secs(1));
+                std::thread::sleep(Duration::from_secs(2));
             } else {
-                flag = false;
+                return;
             }
         }
     };
@@ -82,7 +90,7 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
     let extract_sku = |tab: &Arc<Tab>| {
         push_web_log(WebLog::new_default("提取页面sku数据"));
 
-        let li_val = tab.wait_for_elements("[data-csa-c-item-id]");
+        let li_val = tab.find_elements("[data-csa-c-item-id]");
         match li_val {
             Ok(lis) => {
                 let str = "";
