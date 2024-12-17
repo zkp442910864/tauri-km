@@ -8,12 +8,8 @@ export class AmazonAction {
     // https://www.amazon.com/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5
     // ?language=en_US
 
-    domain = 'https://www.amazon.com';
-    collection_urls = [
-        '/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5',
-        '/stores/page/6FF02BCB-060B-4B12-A07F-6C60EFC143F3',
-        '/stores/page/BBF5BC86-5FA2-4520-A0DC-750B13670037',
-    ];
+    domain: string;
+    collection_urls: string[];
     product_url = '/dp';
     fixed_params = {
         language: 'en_US',
@@ -51,7 +47,7 @@ export class AmazonAction {
 
     push_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
         const key = sku.toLocaleUpperCase();
-        if (!this.sku_map[key]) {
+        if (!sku_map[key]) {
             const new_sku_item = { sku: key, };
             sku_map[key] = new_sku_item;
             sku_data.push(new_sku_item);
@@ -75,7 +71,7 @@ export class AmazonAction {
         LogOrErrorSet.get_instance().push_log('亚马逊分类处理', { title: true, is_fill_row: true, });
 
         for (const url of urls) {
-            const fullUrl = `${url}?${stringify({ ...this.fixed_params, })}`;
+            const fullUrl = `${url}${url.indexOf('?') > -1 ? '&' : '?'}${stringify({ ...this.fixed_params, })}`;
             LogOrErrorSet.get_instance().push_log(`获取数据开始: ${fullUrl}`, { repeat: true, is_fill_row: true, });
 
             try {

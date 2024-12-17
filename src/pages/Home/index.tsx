@@ -33,6 +33,7 @@ const Home = () => {
             '/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5',
             '/stores/page/6FF02BCB-060B-4B12-A07F-6C60EFC143F3',
             '/stores/page/BBF5BC86-5FA2-4520-A0DC-750B13670037',
+            '/stores/page/814A8742-74D4-4AD6-93EA-AE0CE90D80F9/search?terms=chonchow',
         ],
         shopify_background_domain: 'https://admin.shopify.com/store/jvrwsa-aj',
     });
@@ -174,7 +175,7 @@ const Home = () => {
                 <Button type="primary" onClick={() => void action()}>运行</Button>
                 <Button type="primary" onClick={() => void test()}>test</Button>
                 {/* <Button type="primary" onClick={() => void shopify_fn()}>1: shopify</Button> */}
-                {/* <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button> */}
+                <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button>
             </div>
             <ContentBox>
                 <Splitter
