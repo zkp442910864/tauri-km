@@ -68,7 +68,7 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
         push_web_log(WebLog::new_default("循环加载更多数据"));
         let mut flag = true;
 
-        std::thread::sleep(Duration::from_secs(1));
+        // std::thread::sleep(Duration::from_secs(1));
         while flag {
             if trigger_more_btn(tab) || has_loading(tab) {
                 std::thread::sleep(Duration::from_secs(1));
@@ -82,7 +82,7 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
     let extract_sku = |tab: &Arc<Tab>| {
         push_web_log(WebLog::new_default("提取页面sku数据"));
 
-        let li_val = tab.wait_for_elements("div>ul>li");
+        let li_val = tab.wait_for_elements("[data-csa-c-item-id]");
         match li_val {
             Ok(lis) => {
                 let str = "";
