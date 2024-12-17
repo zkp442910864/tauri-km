@@ -82,71 +82,6 @@ pub fn task_create_folder(app: AppHandle, url: String) -> Result<String, String>
     Response::new_result(1, Some(result), None)
 }
 
-/** 比对两组图片是存在差异 */
-#[command]
-pub async fn task_images_diff(
-    app: AppHandle,
-    sku: String,
-    folder_type: String,
-    shopify_urls: Vec<String>,
-    amazon_urls: Vec<String>,
-) -> Result<String, String> {
-    let result = tokio::task::spawn_blocking(move || -> bool {
-        let mut result_arr = Vec::<Extremes>::new();
-        let mut result_img_arr = Vec::<Vec<u8>>::new();
-        let mut status = false;
-
-        for (index, url_str1) in shopify_urls.iter().enumerate() {
-            let url_str2_result = amazon_urls.get(index);
-            if url_str2_result == None {
-                continue;
-            }
-            let url_str2: &String = url_str2_result.unwrap();
-
-            let (img1, _) = get_image_v2(url_str1);
-            let (img2, raw_bytes) = get_image_v2(url_str2);
-
-            let mut matcher = TemplateMatcher::new();
-            matcher.match_template(img1, img2, MatchTemplateMethod::SumOfSquaredDifferences);
-
-            let result = matcher.wait_for_result().unwrap();
-            result_arr.push(find_extremes(&result));
-            result_img_arr.push(raw_bytes);
-        }
-
-        result_arr.iter().for_each(|item| {
-            if item.min_value > 100.0 || item.max_value > 100.0 {
-                status = true;
-            }
-        });
-
-        if status {
-            let folder_path = Path::new(&sku).join(&folder_type);
-            let full_folder_path = create_folder(app, folder_path.to_string_lossy().to_string());
-
-            println!("full_folder_path: {:?}", full_folder_path);
-            result_img_arr.iter().enumerate().for_each(|(index, item)| {
-                let file_name = format!("{}-{}.png", sku, index);
-                let save_path = Path::new(&full_folder_path).join(file_name);
-                println!("save_path: {:?}", save_path);
-                let _ = fs::write(save_path, item).map_err(|e| format!("写入文件错误: {}", e));
-            });
-        }
-
-        status
-    })
-    .await;
-
-    match result {
-        Ok(val) => Response::new_result(1, Some(val), None),
-        Err(e) => Response::<bool>::new_result(
-            0,
-            Some(false),
-            Some(format!("task_images_diff 失败: {}", e)),
-        ),
-    }
-}
-
 /** 下载图片 */
 #[command]
 pub async fn task_download_imgs(
@@ -186,20 +121,25 @@ pub async fn task_download_imgs(
     }
 }
 
-fn get_image_v2(url: &str) -> (Image<'_>, Vec<u8>) {
+pub fn get_image_v2(url: &str) -> (Image<'_>, Vec<u8>) {
     let response = blocking::get(url).unwrap();
     let val_vec = response.bytes().unwrap().to_vec();
-    let copy_val_vec = val_vec.clone();
-    let val_u8 = val_vec.as_bytes();
-    let img = load_from_memory(val_u8).unwrap().to_luma32f();
-    // let img_vec_f32 = img.to_vec();
+    // let copy_val_vec = val_vec.clone();
+    // let val_u8 = val_vec.as_bytes();
+
+    let match_img = v8_to_img(val_vec.clone());
+
+
+    (match_img, val_vec)
+}
+
+pub fn v8_to_img(val: Vec<u8>) -> Image<'static> {
+    let img = load_from_memory(&val).unwrap().to_luma32f();
     let width = img.width();
     let height = img.height();
     let img_f32_owned = Cow::Owned(img.into_raw());
 
-    let match_img = Image::new(img_f32_owned, width, height);
-
-    (match_img, copy_val_vec)
+    Image::new(img_f32_owned, width, height)
 }
 
 /** 页面快照 */

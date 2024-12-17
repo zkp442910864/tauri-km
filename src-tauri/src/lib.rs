@@ -2,9 +2,7 @@ mod modules;
 use std::process::Command;
 
 use modules::{
-    page_sustain_screenshot, take_screenshot_v2, take_test_check,
-    task_amazon_product_fetch_html, task_create_folder, task_download_imgs, task_find_amazon_sku,
-    task_images_diff, MY_BROWSER,
+    page_sustain_screenshot, take_screenshot_v2, take_test_check, task_amazon_images_diff, task_amazon_images_diff_v2, task_amazon_product_fetch_html, task_create_folder, task_download_imgs, task_find_amazon_sku, MY_BROWSER
 };
 use std::time::Duration;
 use tauri::{async_runtime::spawn, Manager};
@@ -54,7 +52,8 @@ pub fn run() {
             task_find_amazon_sku,
             task_amazon_product_fetch_html,
             task_create_folder,
-            task_images_diff,
+            task_amazon_images_diff,
+            task_amazon_images_diff_v2,
             task_download_imgs,
             page_sustain_screenshot,
             take_test_check,
