@@ -127,9 +127,12 @@ export class Compare {
             else if (shopify_item.type === 'get_price') {
                 const shopify_val = shopify_item.data as IOtherData;
                 // 抓取数据出错了,导致对象有了,值没有
-                const amazon_val = (amazon_item.data || {}) as IOtherData;
-
-                if (shopify_val.price !== amazon_val.price || shopify_val.old_price !== amazon_val.old_price) {
+                const amazon_val = (amazon_item?.data || {}) as IOtherData;
+                if (!amazon_item) {
+                    is_update = true;
+                    msgs.push('price.no_price');
+                }
+                else if (shopify_val.price !== amazon_val.price || shopify_val.old_price !== amazon_val.old_price) {
                     is_update = true;
                     msgs.push('price');
                 }
@@ -188,8 +191,8 @@ export class Compare {
                     }
 
                     if (this.sort_json(shopify_json_val) !== this.sort_json(omit(amazon_json_val, ['img_urls',]) as unknown as Record<string, unknown>)) {
-                        console.log(this.sort_json(shopify_json_val));
-                        console.log(this.sort_json(omit(amazon_json_val, ['img_urls',])));
+                        // console.log(this.sort_json(shopify_json_val));
+                        // console.log(this.sort_json(omit(amazon_json_val, ['img_urls',])));
 
                         is_update = true;
                         msgs.push('content_json');

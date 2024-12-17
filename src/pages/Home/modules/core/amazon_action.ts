@@ -155,7 +155,7 @@ export class AmazonAction {
             });
 
             if (price === -1) {
-                return new IHtmlParseData('get_title', null, '解析失败', new Error('解析失败'));
+                return new IHtmlParseData('get_price', null, '解析失败', new Error('解析失败'));
             }
 
             return new IHtmlParseData('get_price', { price, old_price, });
@@ -346,6 +346,7 @@ export class AmazonAction {
                             item.classList.contains('apm-centerthirdcol') ||
                             item.classList.contains('apm-sidemodule-textright') ||
                             item.classList.contains('apm-flex-item-third-width') ||
+                            item.classList.contains('apm-flex-item-fourth-width') ||
                             item.classList.contains('apm-rightthirdcol')
                         ) {
                             const columns: IDetailContentData[] = [];
@@ -392,7 +393,14 @@ export class AmazonAction {
                 // window.asdasd = each;
                 // console.log(dom, each);
                 // each(dom.querySelectorAll('.aplus-module'));
-                each(dom.querySelectorAll('#aplus_feature_div #aplus .aplus-module'));
+                // each(dom.querySelectorAll('#aplus_feature_div #aplus .aplus-module'));
+                if (document.querySelector('#productDescription_feature_div #productDescription')) {
+                    each([dom.querySelector('#productDescription_feature_div #productDescription')!,]);
+                }
+                else {
+                    each(dom.querySelectorAll('#aplus_feature_div>#aplus .aplus-module.aplus-standard'));
+                }
+                // each(dom.querySelectorAll('#aplus_feature_div>#aplus .aplus-module.aplus-standard'));
                 return new IHtmlParseData('get_content_json', JSON.stringify(data));
             }
             catch (error) {
@@ -407,7 +415,7 @@ export class AmazonAction {
                 LogOrErrorSet.get_instance().push_log(`获取数据开始: ${fullUrl}`, { repeat: true, });
                 const fail_count = 0;
                 const fn = async () => {
-                    const res = await retry({ times: this.retry_count, delay: 1000, }, () => core.invoke<string>('task_fetch_html', { url: fullUrl, }));
+                    const res = await retry({ times: this.retry_count, delay: 1000, }, () => core.invoke<string>('task_amazon_product_fetch_html', { url: fullUrl, }));
                     const json_data = JSON.parse(res) as ITauriResponse<string>;
                     if (json_data.status === 0) {
                         LogOrErrorSet.get_instance().push_log(`可能遇到验证页面: ${fullUrl} \n ${LogOrErrorSet.get_instance().save_error(json_data)}`, { error: true, is_fill_row: true, });

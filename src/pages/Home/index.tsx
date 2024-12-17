@@ -87,15 +87,31 @@ const Home = () => {
         //         ],
         //     });
         // }
+        // {
+        //     const res = await invoke<string>('task_download_imgs', {
+        //         sku: 'xxx',
+        //         folderType: 'banner',
+        //         urls: [
+        //             'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+        //             'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+        //         ],
+        //     });
+        // }
+        // {
+        //     const urls = [
+        //         'https://www.amazon.com/dp/B07XKZKBYW?language=en_US',
+        //         // 'https://www.amazon.com/dp/B0C4KLQBYT?language=en_US',
+        //         // 'https://www.amazon.com/dp/B0C45XWP82?language=en_US',
+        //         // 'https://www.amazon.com/dp/B0CNK1J7SX?language=en_US',
+        //     ];
+        //     for (const url of urls) {
+        //         await invoke<string>('page_sustain_screenshot', {
+        //             url,
+        //         });
+        //     }
+        // }
         {
-            const res = await invoke<string>('task_download_imgs', {
-                sku: 'xxx',
-                folderType: 'banner',
-                urls: [
-                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
-                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
-                ],
-            });
+            await invoke('take_test_check', { url: 'file:///C:/Users/zhouk/Desktop/Amazon.com.html', });
         }
     };
 
