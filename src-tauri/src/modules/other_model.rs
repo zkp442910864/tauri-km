@@ -1,7 +1,5 @@
-use core::fmt;
 
 use serde::{Deserialize, Serialize};
-use template_matching::Extremes;
 
 #[derive(Serialize, Deserialize, std::fmt::Debug)]
 pub struct Response<T = String>

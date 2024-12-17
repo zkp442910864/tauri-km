@@ -122,6 +122,7 @@ dependencies = [
  "futures",
  "headless_chrome",
  "image 0.25.5",
+ "lazy_static",
  "log",
  "reqwest",
  "serde",

@@ -3,23 +3,50 @@ use super::{
     other_model::Response,
 };
 
-use futures::future;
-use headless_chrome::protocol::cdp::Page;
+use headless_chrome::{
+    browser::tab::point::Point,
+    protocol::cdp::{Page, DOM},
+};
 use headless_chrome::{Browser, LaunchOptions, Tab};
 use image::{load_from_memory, EncodableLayout};
+use lazy_static::lazy_static;
 use reqwest::blocking;
 use std::{borrow::Cow, fs, path::Path, sync::Arc, thread::sleep, time::Duration};
-use tauri::{command, path, App, AppHandle, Manager};
+use tauri::{command, AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 use template_matching::{find_extremes, Extremes, Image, MatchTemplateMethod, TemplateMatcher};
 use tokio::task::spawn_blocking;
 
-pub fn start_browser(url: &str) -> Result<(Arc<Tab>, Browser), String> {
+lazy_static! {
+    pub static ref MY_BROWSER: Browser = Browser::new(LaunchOptions {
+        headless: false,
+        devtools: false,
+        sandbox: true,
+        enable_gpu: true,
+        enable_logging: false,
+        idle_browser_timeout: Duration::from_secs(60 * 10),
+        window_size: None,
+        path: None,
+        user_data_dir: None,
+        port: None,
+        ignore_certificate_errors: true,
+        extensions: Vec::new(),
+        process_envs: None,
+        #[cfg(feature = "fetch")]
+        fetcher_options: Default::default(),
+        args: Vec::new(),
+        ignore_default_args: Vec::new(),
+        disable_default_args: false,
+        proxy_server: None,
+    })
+    .unwrap();
+}
+
+/** 启动浏览器 */
+pub fn start_browser(url: &str) -> Result<(Arc<Tab>, &Browser), String> {
     push_web_log(WebLog::new_default("启动浏览器"));
-    let browser = Browser::new(LaunchOptions::default()).map_err(|e| {
-        push_web_log(WebLog::new_error("无法启动浏览器"));
-        format!("无法启动浏览器: {}", e)
-    })?;
+
+    let browser = &MY_BROWSER;
 
     push_web_log(WebLog::new_default("打开tab标签"));
     let tab = browser.new_tab().map_err(|e| {
@@ -40,7 +67,6 @@ pub fn start_browser(url: &str) -> Result<(Arc<Tab>, Browser), String> {
 
 /** 创建文件夹 */
 pub fn create_folder(app: AppHandle, url: String) -> String {
-    // Ok(false)
     let root_folder = "km-temp";
     let desktop_dir = app.path().desktop_dir().unwrap();
     let file_path = desktop_dir.join(root_folder).join(&url);
@@ -49,94 +75,7 @@ pub fn create_folder(app: AppHandle, url: String) -> String {
     file_path.to_string_lossy().to_string()
 }
 
-/** 获取html */
-#[command]
-pub async fn task_fetch_html(app: AppHandle, url: String) -> Result<String, String> {
-    let scroll_to = |tab: &Arc<Tab>| {
-        let mut flag = true;
-        let mut total_count = 5;
-        let mut reset = false;
-        while flag {
-            let data = tab.find_element("body");
-            let flag_content =
-                tab.find_element("#productDetails_feature_div a i~span.a-expander-prompt");
-            if let Ok(_) = flag_content {
-                flag = false;
-                // println!("start::::flag");
-            }
-            else if  total_count <= 0 {
-                flag = false;
-                reset = true;
-                // println!("task_fetch_html::::timeout count");
-            }
-            else if let Ok(el) = data {
-                let _ = el.scroll_into_view();
-                sleep(Duration::from_secs(2));
-                total_count = total_count - 1;
-                // println!("start::::scroll");
-            } else {
-                sleep(Duration::from_secs(3));
-                total_count = total_count - 1;
-                // println!("start::::fail");
-            }
-        }
-        // println!("start::::333333");
-
-        reset
-    };
-
-    let is_check_page = |tab: &Arc<Tab>| {
-        let html = tab.get_content().unwrap();
-        let flag = html.find("Sorry, we just need to make sure you're not a robot. For best results, please make sure your browser is accepting cookies.");
-        println!("Log::::{:?}", html);
-        println!("Log::::{:?}", flag);
-
-        match flag {
-            Some(_) => (true, html),
-            None => (false, html),
-        }
-    };
-
-    let result = spawn_blocking(move || {
-        let (tab, browser) = start_browser(&url).unwrap();
-
-        let (check_page, check_html) = is_check_page(&tab);
-        if check_page {
-            page_screenshot(app, &tab, url, &check_html);
-            return "".to_string();
-        }
-
-        let reset = scroll_to(&tab);
-        if reset {
-            println!("log::::refresh");
-            let _ = tab.reload(false, None);
-            scroll_to(&tab);
-        }
-        let html = tab.get_content().unwrap();
-
-        page_screenshot(app, &tab, url, &html);
-
-        html
-    })
-    .await;
-
-    match result {
-        Ok(data) => {
-            if data != "" {
-                Response::new_result(1, Some(data), None)
-            }
-            else {
-                Response::<String>::new_result(0, None, Some(format!("需要验证页面")))
-            }
-        },
-        Err(e) => {
-            let msg = format!("异步任务失败: {}", e);
-            Response::<String>::new_result(0, None, Some(msg))
-        }
-    }
-}
-
-/** 创建文件夹 */
+/** 提供web使用: 创建文件夹 */
 #[command]
 pub fn task_create_folder(app: AppHandle, url: String) -> Result<String, String> {
     let result = create_folder(app, url);
@@ -210,8 +149,19 @@ pub async fn task_images_diff(
 
 /** 下载图片 */
 #[command]
-pub async fn task_download_imgs(app: AppHandle, sku: String, folder_type: String, urls: Vec<String>) -> Result<String, String> {
-    let full_folder_path = create_folder(app, Path::new(&sku).join(&folder_type).to_string_lossy().to_string());
+pub async fn task_download_imgs(
+    app: AppHandle,
+    sku: String,
+    folder_type: String,
+    urls: Vec<String>,
+) -> Result<String, String> {
+    let full_folder_path = create_folder(
+        app,
+        Path::new(&sku)
+            .join(&folder_type)
+            .to_string_lossy()
+            .to_string(),
+    );
 
     let result = spawn_blocking(move || {
         // println!("DDD:::::00000");
@@ -225,12 +175,14 @@ pub async fn task_download_imgs(app: AppHandle, sku: String, folder_type: String
             // println!("DDD:::::33333");
         });
         // println!("DDD:::::44444");
-
-    }).await;
+    })
+    .await;
 
     match result {
         Ok(_) => Response::<String>::new_result(1, None, None),
-        Err(e) => Response::<String>::new_result(0, None, Some(format!("task_download_file 失败: {}", e))),
+        Err(e) => {
+            Response::<String>::new_result(0, None, Some(format!("task_download_file 失败: {}", e)))
+        }
     }
 }
 
@@ -252,7 +204,6 @@ fn get_image_v2(url: &str) -> (Image<'_>, Vec<u8>) {
 
 /** 页面快照 */
 pub fn page_screenshot(app: AppHandle, tab: &Arc<Tab>, url: String, html: &String) {
-
     let path_url = create_folder(app, "page-content".to_string());
     let file_html_name = format!(
         "{}.html",
@@ -281,4 +232,93 @@ pub fn page_screenshot(app: AppHandle, tab: &Arc<Tab>, url: String, html: &Strin
 
     let _ = fs::write(save_html_path, html.as_bytes());
     let _ = fs::write(save_img_path, screenshot);
+}
+
+/** 页面快照,x秒内 */
+#[command]
+pub async fn page_sustain_screenshot(app: AppHandle, url: String) -> Result<String, String> {
+    let path_url = create_folder(app, "page_sustain_screenshot".to_string());
+
+    let _ = spawn_blocking(move || {
+        let (tab, browser) = start_browser(&url).unwrap();
+        let mut current_second = 0.00;
+        let total_seconds = 10.00;
+
+        loop {
+            if current_second > total_seconds {
+                let _ = tab.close(true);
+                return;
+            } else {
+                let html = tab.get_content().unwrap();
+                let screenshot = tab
+                    .capture_screenshot(Page::CaptureScreenshotFormatOption::Jpeg, None, None, true)
+                    .map_err(|e| {
+                        push_web_log(WebLog::new_error("截图失败"));
+                        format!("截图失败: {}", e)
+                    })
+                    .unwrap();
+
+                let file_name = format!("0000{}.png", current_second * 10.0);
+                let file_html_name = format!("0000{}.html", current_second * 10.0);
+                let save_img_path = Path::new(&path_url).join(file_name);
+                let save_html_path = Path::new(&path_url).join(file_html_name);
+                let _ = fs::write(&save_img_path, screenshot);
+                let _ = fs::write(&save_html_path, html.as_bytes());
+
+                // println!("Log::::{:?}", current_second);
+                // let flag = html.find("Sorry, we just need to make sure you're not a robot. For best results, please make sure your browser is accepting cookies.");
+                // if let Some(e) = flag {
+                //     println!("Log::::{:?}", e);
+                // }
+
+                current_second = (current_second * 1000.00 + 1000.00) / 1000.00;
+                // println!("Log::::{:?}", current_second);
+                sleep(Duration::from_millis(1000));
+            }
+        }
+    })
+    .await;
+
+    Response::<String>::new_result(1, None, None)
+}
+
+/** 点击页面某个点 */
+pub fn click_point(tab: &Arc<Tab>, selector: &str) {
+    let point_web = tab
+        .evaluate(
+            &format!(
+                "
+        (() => {{
+            const dom = document.querySelector('{}');
+            const data = dom.getBoundingClientRect();
+            return [data.x, data.y];
+        }})()
+    ",
+                selector
+            ),
+            false,
+        )
+        .unwrap();
+
+    let point_web_val_1 = &point_web.preview.unwrap();
+    // println!("Log::::point_web::::{:?}", point_web_val_1.properties[0].clone().value.unwrap().parse::<f64>().unwrap());
+    let point = Point {
+        x: point_web_val_1.properties[0]
+            .clone()
+            .value
+            .unwrap()
+            .parse::<f64>()
+            .unwrap()
+            + 10.0,
+        y: point_web_val_1.properties[1]
+            .clone()
+            .value
+            .unwrap()
+            .parse::<f64>()
+            .unwrap()
+            + 10.0,
+    };
+
+    let _ = tab.move_mouse_to_point(point);
+    let _ = tab.click_point(point);
 }

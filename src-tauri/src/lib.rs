@@ -1,7 +1,14 @@
 mod modules;
+use std::process::Command;
+
 use modules::{
-    my_custom_command, take_screenshot_v2, task_create_folder, task_download_imgs, task_fetch_html, task_find_amazon_sku, task_images_diff
+    page_sustain_screenshot, take_screenshot_v2, take_test_check,
+    task_amazon_product_fetch_html, task_create_folder, task_download_imgs, task_find_amazon_sku,
+    task_images_diff, MY_BROWSER,
 };
+use std::time::Duration;
+use tauri::{async_runtime::spawn, Manager};
+use tokio::{runtime::Runtime, task::spawn_blocking};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
@@ -13,6 +20,26 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
             // println!("WebView get_webview_window: {:?}", 3);
+            let browser = &MY_BROWSER;
+            let pid = browser.get_process_id().unwrap();
+            let web_win = app.get_webview_window("main").unwrap();
+
+            // browser_keep_alive();
+            // web_win.open_devtools();
+            web_win.on_window_event(move |e| {
+                let str = format!("{:?}", e);
+                // println!("Log::::on_window_event::::{}", str);
+                #[cfg(target_os = "windows")]
+                if str == "Destroyed" {
+                    let _ = Command::new("taskkill")
+                        .arg("/F")
+                        .arg("/PID")
+                        .arg(pid.to_string())
+                        .output()
+                        .expect("Unable to terminate the browser process");
+                }
+            });
+
             if cfg!(debug_assertions) {
                 app.handle().plugin(
                     tauri_plugin_log::Builder::default()
@@ -23,14 +50,32 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            my_custom_command,
             take_screenshot_v2,
             task_find_amazon_sku,
-            task_fetch_html,
+            task_amazon_product_fetch_html,
             task_create_folder,
             task_images_diff,
-            task_download_imgs
+            task_download_imgs,
+            page_sustain_screenshot,
+            take_test_check,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/** 浏览器保持活动状态 */
+pub fn browser_keep_alive() {
+    println!("Log::::start::::browser_keep_alive");
+
+    spawn(async move {
+        loop {
+            println!("Log::::browser_keep_alive");
+            let browser = &MY_BROWSER;
+            let tab = browser.new_tab().unwrap();
+            // let _ = tab.navigate_to("chrome://version/");
+            tokio::time::sleep(Duration::from_secs(3)).await;
+            let _ = tab.close(true);
+            tokio::time::sleep(Duration::from_secs(3)).await;
+        }
+    });
 }
