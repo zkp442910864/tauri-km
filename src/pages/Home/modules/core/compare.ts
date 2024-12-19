@@ -1,5 +1,5 @@
 import { alphabetical, crush, omit } from 'radash';
-import { IAmazonData, IDetailContentRoot, IOtherData, TThenData } from './index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, TParseTypeMsg, TThenData } from './index.type';
 import { LogOrErrorSet } from '@/utils';
 import { image } from '@tauri-apps/api';
 import { invoke } from '@tauri-apps/api/core';
@@ -93,7 +93,7 @@ export class Compare {
     /** 比对逻辑 */
     async primary_logic(shopify: IAmazonData, amazon: IAmazonData) {
         let is_update = false;
-        const msgs: string[] = [];
+        const msgs: TParseTypeMsg[] = [];
 
         for (const shopify_item of shopify.detail!) {
             const amazon_item = amazon.detail_map![shopify_item.type];
@@ -101,7 +101,7 @@ export class Compare {
             if (shopify_item.type === 'get_title') {
                 if (shopify_item.data !== amazon_item.data) {
                     is_update = true;
-                    msgs.push('title');
+                    msgs.push('get_title');
                 }
             }
             else if (shopify_item.type === 'amazon_address_url') {
@@ -116,12 +116,12 @@ export class Compare {
                 const amazon_val = amazon_item.data as string[];
                 if (shopify_val.length !== amazon_val.length) {
                     is_update = true;
-                    msgs.push('banner_imgs');
+                    msgs.push('get_banner_imgs');
                     await this.download_imgs(amazon.sku, 'banner', amazon_val);
                 }
                 else if (await this.compare_imgs(shopify.sku, 'banner', shopify_val, amazon_val)) {
                     is_update = true;
-                    msgs.push('content_json.2');
+                    msgs.push('get_banner_imgs');
                 }
             }
             else if (shopify_item.type === 'get_price') {
@@ -130,11 +130,11 @@ export class Compare {
                 const amazon_val = (amazon_item?.data || {}) as IOtherData;
                 if (!amazon_item) {
                     is_update = true;
-                    msgs.push('price.no_price');
+                    msgs.push('get_price.no_price');
                 }
                 else if (shopify_val.price !== amazon_val.price || shopify_val.old_price !== amazon_val.old_price) {
                     is_update = true;
-                    msgs.push('price');
+                    msgs.push('get_price');
                 }
             }
             else if (shopify_item.type === 'get_sku_model') {
@@ -142,7 +142,7 @@ export class Compare {
                 const amazon_val = amazon_item.data as string;
                 if (shopify_val.length !== amazon_val.length) {
                     is_update = true;
-                    msgs.push('sku_model');
+                    msgs.push('get_sku_model');
                 }
             }
             else if (shopify_item.type === 'get_detail') {
@@ -151,7 +151,7 @@ export class Compare {
 
                 if (shopify_val !== amazon_val) {
                     is_update = true;
-                    msgs.push('detail');
+                    msgs.push('get_detail');
                 }
             }
             else if (shopify_item.type === 'get_desc_text') {
@@ -160,7 +160,7 @@ export class Compare {
                 const amazon_val = (amazon_item.data || {}) as IOtherData;
                 if (shopify_val !== amazon_val.text) {
                     is_update = true;
-                    msgs.push('desc_text');
+                    msgs.push('get_desc_text');
                 }
             }
             else if (shopify_item.type === 'get_features_specs') {
@@ -169,7 +169,7 @@ export class Compare {
 
                 if (shopify_val !== amazon_val) {
                     is_update = true;
-                    msgs.push('features_specs');
+                    msgs.push('get_features_specs');
                 }
             }
             else if (shopify_item.type === 'get_content_json') {
@@ -182,12 +182,12 @@ export class Compare {
 
                     if (shopify_imgs.length !== amazon_imgs.length) {
                         is_update = true;
-                        msgs.push('content_json.1.img_content');
+                        msgs.push('get_content_imgs');
                         await this.download_imgs(amazon.sku, 'desc', amazon_imgs);
                     }
                     else if (await this.compare_imgs(shopify.sku, 'desc', shopify_imgs, amazon_imgs)) {
                         is_update = true;
-                        msgs.push('content_json.2.img_content');
+                        msgs.push('get_content_imgs');
                     }
 
                     if (this.sort_json(shopify_json_val) !== this.sort_json(omit(amazon_json_val, ['img_urls',]) as unknown as Record<string, unknown>)) {
@@ -195,13 +195,22 @@ export class Compare {
                         // console.log(this.sort_json(omit(amazon_json_val, ['img_urls',])));
 
                         is_update = true;
-                        msgs.push('content_json');
+                        msgs.push('get_content_json');
                     }
                 }
                 catch (error) {
                     LogOrErrorSet.get_instance().push_log(`json序列化失败: ${LogOrErrorSet.get_instance().save_error({ shopify_item, amazon_item, error, })}`, { error: true, is_fill_row: true, });
                     is_update = true;
-                    msgs.push('content_json.4');
+                    msgs.push('get_content_json.error');
+                }
+            }
+            else if (shopify_item.type === 'get_relevance_tag') {
+                const shopify_val = shopify_item.data as string;
+                const amazon_val = amazon_item.data as string;
+
+                if (shopify_val !== amazon_val) {
+                    is_update = true;
+                    msgs.push('get_relevance_tag');
                 }
             }
         }

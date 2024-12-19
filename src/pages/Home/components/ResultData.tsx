@@ -2,16 +2,17 @@ import { Dropdown, List, message, Tag } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useRef } from 'react';
 import { CompareData } from '../modules/core/compare';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseType } from '../modules/core/index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from '../modules/core/index.type';
 import { open } from '@tauri-apps/plugin-shell';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useDebounceEffect, useStateExtend } from '@/hooks';
+import { ShopifyStoreAction } from '../modules/core/shopify_store_action';
 
-export const ResultData: FC<{result: CompareData[], shopify_background_domain: string, shopify_domain: string, amazon_domain: string, onClick: (item: unknown) => void}> = ({
+export const ResultData: FC<{result: CompareData[], shopify_store_url: string, shopify_domain: string, amazon_domain: string, onClick: (item: unknown) => void}> = ({
     result,
     shopify_domain,
     amazon_domain,
-    shopify_background_domain,
+    shopify_store_url,
     onClick,
 }) => {
 
@@ -19,6 +20,7 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
     const { current: state, } = useRef({
         result_filter_type: '',
         record_val: [] as string[],
+        shopify_store_action: null as null | ShopifyStoreAction,
     });
 
     const color_map = {
@@ -32,7 +34,7 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
         e.stopPropagation();
         if (type === 'shopify_background') {
             // console.log(item.data.detail_map?.shopify_product_id.data as string);
-            void open(`${shopify_background_domain}/products/${item.data.detail_map?.shopify_product_id.data as string}`);
+            void open(`${shopify_store_url}/products/${item.data.detail_map?.shopify_product_id.data as string}`);
         }
         else if (type === 'shopify') {
             void open(`${shopify_domain}/products/${item.data.sku}`);
@@ -42,10 +44,15 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
         }
     };
 
-    const tag_click = (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: string, item: CompareData<IAmazonData>) => {
+    const auto_update_item = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, item: CompareData<IAmazonData>) => {
+        e.stopPropagation();
+        void state.shopify_store_action?.auto_update(item);
+    };
+
+    const tag_click = (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: TParseTypeMsg, item: CompareData<IAmazonData>) => {
         e.stopPropagation();
 
-        const key = `get_${type}`.split('.')[0] as TParseType;
+        const key = type.split('.')[0] as TParseType;
         if (item.data?.detail_map?.[key] && item.update_data?.detail_map?.[key]) {
             onClick([
                 item.data?.detail_map?.[key],
@@ -54,11 +61,14 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
         }
     };
 
-    const tag_copy = async (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: string, item: CompareData<IAmazonData>) => {
+    const tag_copy = async (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: TParseTypeMsg, item: CompareData<IAmazonData>) => {
 
-        const key = `get_${type}`.split('.')[0] as TParseType;
+        const key = type.split('.')[0] as TParseType;
         const data = item.update_data?.detail_map?.[key];
-        if (!data) return;
+        if (!data) {
+            // console.warn(`type: ${type}, key: ${key}, 匹配不到`);
+            return;
+        }
 
         let content = '';
         switch (key) {
@@ -111,6 +121,10 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
         void update({});
     }, []);
 
+    useDebounceEffect(() => {
+        state.shopify_store_action = new ShopifyStoreAction(shopify_store_url);
+    }, [shopify_store_url,]);
+
     return (
         <>
             <div className="flex f-items-center p-b-4 un-gap-6px bg-f un-sticky un-top-52px un-z2">
@@ -154,7 +168,7 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
                                                 <span>explain:</span>
                                                 {(() => {
                                                     if (item.type === 'update') {
-                                                        return item.explain?.split(',').map(val => {
+                                                        return (item.explain?.split(',') as TParseTypeMsg[]).map(val => {
 
                                                             return (
                                                                 <Tag className="un-flex-inline un-gap-4px" key={val} onClick={(e) => tag_click(e, val, item)}>
@@ -169,6 +183,11 @@ export const ResultData: FC<{result: CompareData[], shopify_background_domain: s
                                                 })()}
                                             </div>
                                         </div>
+                                        {
+                                            item.type === 'update'
+                                                ? <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动更新" onClick={(e) => auto_update_item(e, item)}></div>
+                                                : ''
+                                        }
                                         <div className="i-arcticons:shopify un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'shopify_background', item)}></div>
                                         <div className="i-logos:shopify un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'shopify', item)}></div>
                                         <div className="i-devicon:amazonwebservices-wordmark un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'amazon', item)}></div>

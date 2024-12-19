@@ -1,4 +1,5 @@
 
+use phf::phf_map;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, std::fmt::Debug)]
@@ -46,3 +47,40 @@ where
         }
     }
 }
+
+// 定义枚举，用于描述每种类型
+#[derive(Debug)]
+pub enum TParseTypeMsg {
+    GetTitle,
+    AmazonAddressUrl,
+    GetBannerImgs,
+    GetPrice,
+    GetDetail,
+    GetDescText,
+    GetFeaturesSpecs,
+    GetContentJson,
+    GetSkuModel,
+    ShopifyProductId,
+    GetContentImgs,
+    GetPriceNoPrice,
+    GetContentJsonError,
+    GetRelevanceTag,
+}
+
+// 使用 `phf` 静态哈希映射来关联字符串和枚举值
+pub static PARSE_TYPE_MAP: phf::Map<&'static str, TParseTypeMsg> = phf_map! {
+    "get_title" => TParseTypeMsg::GetTitle,
+    "amazon_address_url" => TParseTypeMsg::AmazonAddressUrl,
+    "get_banner_imgs" => TParseTypeMsg::GetBannerImgs,
+    "get_price" => TParseTypeMsg::GetPrice,
+    "get_detail" => TParseTypeMsg::GetDetail,
+    "get_desc_text" => TParseTypeMsg::GetDescText,
+    "get_features_specs" => TParseTypeMsg::GetFeaturesSpecs,
+    "get_content_json" => TParseTypeMsg::GetContentJson,
+    "get_sku_model" => TParseTypeMsg::GetSkuModel,
+    "shopify_product_id" => TParseTypeMsg::ShopifyProductId,
+    "get_content_imgs" => TParseTypeMsg::GetContentImgs,
+    "get_price.no_price" => TParseTypeMsg::GetPriceNoPrice,
+    "get_content_json.error" => TParseTypeMsg::GetContentJsonError,
+    "get_relevance_tag" => TParseTypeMsg::GetRelevanceTag,
+};

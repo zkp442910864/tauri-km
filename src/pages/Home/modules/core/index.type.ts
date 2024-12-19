@@ -1,17 +1,23 @@
 
 type TThenData = {sku_data: IAmazonData[], sku_map: Record<string, IAmazonData>};
-type TParseType = 'get_title' |
-    'amazon_address_url' |
-    'get_banner_imgs' |
-    'get_price' |
-    'get_detail' |
+type TParseType =
+    'shopify_product_id' |
+    'shopify_sku_id' |
+
+    'get_title' |
     'get_desc_text' |
+    'get_price' |
+    'get_relevance_tag' |
+    'get_detail' |
     'get_features_specs' |
     'get_content_json' |
+    'amazon_address_url' |
     'get_sku_model' |
-    'shopify_product_id' |
+
+    'get_banner_imgs' |
     'get_content_imgs';
-type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number>;
+type TParseTypeMsg = TParseType | 'get_price.no_price' | 'get_content_json.error';
+type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number | undefined>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -36,6 +42,8 @@ interface IShopifyProductData {
     content_imgs?: string[] | null;
     content_json?: string | null;
     shopify_product_id: number,
+    shopify_sku_id?: number,
+    relevance_tag?: string,
 }
 
 // ~~~~~~~~~~~~~~~~~~~~~~
@@ -98,5 +106,6 @@ export type {
     IShopifyProductData,
     TParseType,
     TParseData,
-    IOtherData
+    IOtherData,
+    TParseTypeMsg
 };

@@ -156,6 +156,8 @@ export class ShopifyAction {
         );
 
         new_data.push(new IHtmlParseData('get_sku_model', data.sku_model || ''));
+        new_data.push(new IHtmlParseData('get_relevance_tag', data.relevance_tag || ''));
+
         new_data.push(new IHtmlParseData('get_detail', data.detail || ''));
         new_data.push(new IHtmlParseData('get_desc_text', await get_real_dom_text(data.desc_text || '')));
         new_data.push(new IHtmlParseData('get_features_specs', data.features_specs || ''));
@@ -163,7 +165,9 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('get_content_json', data.content_json || ''));
 
         new_data.push(new IHtmlParseData('amazon_address_url', data.amazon_address_url || ''));
+
         new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));
+        new_data.push(new IHtmlParseData('shopify_sku_id', data.shopify_sku_id));
 
         return [
             new_data,

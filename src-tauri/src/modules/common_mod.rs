@@ -24,7 +24,7 @@ lazy_static! {
         sandbox: true,
         enable_gpu: true,
         enable_logging: false,
-        idle_browser_timeout: Duration::from_secs(60 * 10),
+        idle_browser_timeout: Duration::from_secs(60 * 60),
         window_size: None,
         path: None,
         user_data_dir: None,

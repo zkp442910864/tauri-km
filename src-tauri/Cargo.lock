@@ -124,6 +124,7 @@ dependencies = [
  "image 0.25.5",
  "lazy_static",
  "log",
+ "phf 0.11.2",
  "reqwest",
  "serde",
  "serde_json",

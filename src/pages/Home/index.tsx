@@ -35,7 +35,7 @@ const Home = () => {
             '/stores/page/BBF5BC86-5FA2-4520-A0DC-750B13670037',
             '/stores/page/814A8742-74D4-4AD6-93EA-AE0CE90D80F9/search?terms=chonchow',
         ],
-        shopify_background_domain: 'https://admin.shopify.com/store/jvrwsa-aj',
+        shopify_store_url: 'https://admin.shopify.com/store/jvrwsa-aj',
     });
 
     const shopify_fn = async () => {
@@ -175,7 +175,7 @@ const Home = () => {
                 <Button type="primary" onClick={() => void action()}>运行</Button>
                 <Button type="primary" onClick={() => void test()}>test</Button>
                 {/* <Button type="primary" onClick={() => void shopify_fn()}>1: shopify</Button> */}
-                <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button>
+                {/* <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button> */}
             </div>
             <ContentBox>
                 <Splitter
@@ -199,7 +199,7 @@ const Home = () => {
                                         <ResultData
                                             result={state.result}
                                             shopify_domain={state.shopify_domain}
-                                            shopify_background_domain={state.shopify_background_domain}
+                                            shopify_store_url={state.shopify_store_url}
                                             amazon_domain={state.amazon_domain}
                                             onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
                                         />

@@ -238,19 +238,21 @@ pub async fn task_amazon_product_fetch_html(app: AppHandle, url: String) -> Resu
             flag = is_check_page(&tab);
             if flag {
                 println!("Log::::check page");
+                sleep(Duration::from_secs(30));
                 break;
                 // handle_check_page(&tab);
                 // sleep(Duration::from_secs(10));
                 // let _ = tab.navigate_to(&url);
                 // continue;
             }
-            flag = find_assign_dom(&tab);
-            if flag {
-                println!("Log::::no find dom");
-                // tab.delete_cookies(cs);
-                let _ = tab.navigate_to(&url);
-                continue;
-            }
+            // 好像亚马逊那边不显示这块了
+            // flag = find_assign_dom(&tab);
+            // if flag {
+            //     println!("Log::::no find dom");
+            //     // tab.delete_cookies(cs);
+            //     let _ = tab.navigate_to(&url);
+            //     continue;
+            // }
         }
 
         let html = tab.get_content().unwrap();

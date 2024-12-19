@@ -1,7 +1,7 @@
 import { get_real_dom_text, handle_number, LogOrErrorSet } from '@/utils';
 import { core } from '@tauri-apps/api';
 import { stringify } from 'qs';
-import { parallel, retry, sleep } from 'radash';
+import { alphabetical, parallel, retry, sleep } from 'radash';
 import { TThenData, IAmazonData, IHtmlParseData, IDetailContentRoot, IDetailContentData, TParseData, TParseType } from './index.type';
 
 export class AmazonAction {
@@ -103,7 +103,7 @@ export class AmazonAction {
 
     /** 获取每个sku下的详情 */
     async fetch_sku_detail(url: string, skus: string[]) {
-        const variant_skus: string[] = [];
+        let variant_skus: string[] = [];
 
         const get_model = (dom: Document) => {
             return JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
@@ -432,6 +432,7 @@ export class AmazonAction {
                             Object.keys(data).forEach((sku) => {
                                 variant_skus.push(sku);
                             });
+                            variant_skus = alphabetical(variant_skus, ii => ii);
                         }
                         catch (error) {
                             LogOrErrorSet.get_instance().push_log(`解析get_model失败: ${fullUrl} \n ${LogOrErrorSet.get_instance().save_error(error)}`, { error: true, is_fill_row: true, });
@@ -457,6 +458,8 @@ export class AmazonAction {
                         parse_data.push(get_features_specs(dom));
                         // 商品详情内容(图 + 数据json)
                         parse_data.push(get_content_json(dom));
+                        // sku关联
+                        parse_data.push(new IHtmlParseData('get_relevance_tag', variant_skus.length > 1 ? `关联:${variant_skus.join('+')}` : ''));
 
                         parse_data.push(new IHtmlParseData('amazon_address_url', fullUrl));
 
