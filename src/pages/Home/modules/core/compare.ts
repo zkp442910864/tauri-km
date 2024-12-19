@@ -35,7 +35,15 @@ export class Compare {
         LogOrErrorSet.get_instance().push_log('遍历新增数据', { title: true, });
 
         const new_sku_data = this.amazon_data.sku_data.filter(ii => !this.shopify_data.sku_map[ii.sku]);
-        return new_sku_data.map(ii => new CompareData('amazon', 'add', ii));
+        return new_sku_data.map(item => {
+            if (item.detail_map?.get_banner_imgs) {
+                void this.download_imgs(item.sku, 'banner', item.detail_map.get_banner_imgs.data as string[]);
+            }
+            if (item.detail_map?.get_content_imgs) {
+                void this.download_imgs(item.sku, 'desc', item.detail_map.get_content_imgs.data as string[]);
+            }
+            return new CompareData('amazon', 'add', item);
+        });
     };
 
     /** 遍历出删除数据 (以shopify的sku为主进行遍历,匹配亚马逊sku,匹配不到的就是删除) */
@@ -245,6 +253,7 @@ export class Compare {
 
     /** 图片下载 */
     async download_imgs(sku: string, folder_type: 'banner' | 'desc', urls: string[]) {
+        if (!urls.length) return true;
         const res = await invoke<string>('task_download_imgs', {
             sku,
             folderType: folder_type,

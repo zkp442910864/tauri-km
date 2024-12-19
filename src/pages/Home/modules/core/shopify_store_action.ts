@@ -1,7 +1,8 @@
 import { message, Modal } from 'antd';
-import { IAmazonData, IOtherData, TParseType, TParseTypeMsg } from './index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from './index.type';
 import { CompareData } from './compare';
 import { invoke } from '@tauri-apps/api/core';
+import { LogOrErrorSet } from '@/utils';
 
 export class ShopifyStoreAction {
     static is_login_status = false;
@@ -17,8 +18,21 @@ export class ShopifyStoreAction {
     async auto_update(data: CompareData<IAmazonData>) {
         try {
             await this.has_login_status();
-            const tab_id = await this.open_product_edit_page(data);
+            const tab_id = await this.open_product_page(data);
             await this.each_update_data(data, tab_id);
+            await this.save_data(data, tab_id);
+        }
+        catch (error) {
+            console.error(error);
+            message.error('存在错误,请查看日志');
+        }
+    }
+
+    async auto_add(data: CompareData<IAmazonData>) {
+        try {
+            await this.has_login_status();
+            const tab_id = await this.open_product_page(data);
+            await this.each_add_data(data, tab_id);
             await this.save_data(data, tab_id);
         }
         catch (error) {
@@ -67,16 +81,15 @@ export class ShopifyStoreAction {
         });
     }
 
-
-    /** 打开编辑页面 */
-    async open_product_edit_page(data: CompareData<IAmazonData>) {
+    /** 打开编辑/新增页面 */
+    async open_product_page(data: CompareData<IAmazonData>) {
         // TODO: rust执行
-        const p_id = data.data.detail_map!.shopify_product_id.data as number;
-        const res = await invoke<string>('task_shopify_store_product_edit_open', { url: `${this.store_url}/products/${p_id}`, });
+        const val = data.type === 'add' ? 'new' : data.data.detail_map!.shopify_product_id.data as number;
+        const res = await invoke<string>('task_shopify_store_product_open', { url: `${this.store_url}/products/${val}`, });
         const json = JSON.parse(res) as ITauriResponse<string>;
 
         if (json.status === 0) {
-            return Promise.reject(new Error('编辑页面:打开失败'));
+            return Promise.reject(new Error('编辑/新增页面:打开失败'));
         }
 
         return json.data!;
@@ -88,6 +101,7 @@ export class ShopifyStoreAction {
         const p_id = data.data.detail_map!.shopify_product_id.data as number;
         const types = data.explain!.split(',') as TParseTypeMsg[];
         const shopify_data = data.data.detail_map;
+        const sku = data.data.sku;
 
         for (const type of types) {
             const key = type.split('.')[0] as TParseType;
@@ -107,28 +121,77 @@ export class ShopifyStoreAction {
                 else if (type === 'get_desc_text') {
                     value = (update_data?.data as IOtherData).html!;
                 }
+                else if (type === 'get_content_json') {
+                    const json = JSON.parse(value as string) as Partial<IDetailContentRoot>;
+                    delete json.img_urls;
+                    value = JSON.stringify(json);
+                }
                 const res = await invoke<string>('task_shopify_store_product_update_item', {
                     url: `${this.store_url}/products/${p_id}`,
                     inputType: type,
                     data: value,
                     tabId: tab_id,
+                    sku,
                 });
                 const json = JSON.parse(res) as ITauriResponse<null>;
 
                 if (json.status === 0) {
-                    return Promise.reject(new Error('编辑页面:数据修改失败'));
+                    // return Promise.reject(new Error('编辑页面:数据修改失败'));
+                    LogOrErrorSet.get_instance().push_log(`编辑页面:数据修改失败: ${type} - ${res}`, { error: true, is_fill_row: true, });
                 }
             }
 
-            await this.confirm_next();
+            // await this.confirm_next();
+        }
+    }
+
+    async each_add_data(data: CompareData<IAmazonData>, tab_id: string) {
+        // const p_id = data.data.detail_map!.shopify_product_id.data as number;
+        // const types = data.explain!.split(',') as TParseTypeMsg[];
+        const sku = data.data.sku;
+        const detail = data.data.detail!;
+
+        for (const item of detail) {
+            let value = item.data;
+            if (item.type === 'get_price') {
+                value = `${(item.data as IOtherData).price}&&${(item.data as IOtherData).old_price}`;
+            }
+            else if (item.type === 'get_banner_imgs') {
+                value = (item.data as string[]).join();
+            }
+            else if (item.type === 'get_content_imgs') {
+                value = (item.data as string[]).join();
+            }
+            else if (item.type === 'get_desc_text') {
+                value = (item.data as IOtherData).html!;
+            }
+            else if (item.type === 'get_content_json') {
+                const json = JSON.parse(value as string) as Partial<IDetailContentRoot>;
+                delete json.img_urls;
+                value = JSON.stringify(json);
+            }
+
+            if (!value) continue;
+            const res = await invoke<string>('task_shopify_store_product_update_item', {
+                url: `${this.store_url}/products/new`,
+                inputType: `${item.type}.add`,
+                data: value,
+                tabId: tab_id,
+                sku,
+            });
+            const json = JSON.parse(res) as ITauriResponse<null>;
+            if (json.status === 0) {
+                LogOrErrorSet.get_instance().push_log(`编辑页面:数据新增失败: ${item.type} - ${res}`, { error: true, is_fill_row: true, });
+            }
+
+            // await this.confirm_next();
         }
     }
 
     /** 都操作完了后,执行完成函数,并关闭窗口 */
     async save_data(data: CompareData<IAmazonData>, tab_id: string) {
         await this.confirm_next('是否保存数据');
-        const p_id = data.data.detail_map!.shopify_product_id.data as number;
-        const res = await invoke<string>('task_shopify_store_product_edit_finish', { url: `${this.store_url}/products/${p_id}`, tabId: tab_id, });
+        const res = await invoke<string>('task_shopify_store_product_finish', { tabId: tab_id, });
         const json = JSON.parse(res) as ITauriResponse<null>;
 
         if (json.status === 0) {

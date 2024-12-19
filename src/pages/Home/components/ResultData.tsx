@@ -34,7 +34,7 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
         e.stopPropagation();
         if (type === 'shopify_background') {
             // console.log(item.data.detail_map?.shopify_product_id.data as string);
-            void open(`${shopify_store_url}/products/${item.data.detail_map?.shopify_product_id.data as string}`);
+            void open(`${shopify_store_url}/products/${(item.data.detail_map?.shopify_product_id?.data as string) || 'new'}`);
         }
         else if (type === 'shopify') {
             void open(`${shopify_domain}/products/${item.data.sku}`);
@@ -47,6 +47,11 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
     const auto_update_item = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, item: CompareData<IAmazonData>) => {
         e.stopPropagation();
         void state.shopify_store_action?.auto_update(item);
+    };
+
+    const auto_add_item = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, item: CompareData<IAmazonData>) => {
+        e.stopPropagation();
+        void state.shopify_store_action?.auto_add(item);
     };
 
     const tag_click = (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: TParseTypeMsg, item: CompareData<IAmazonData>) => {
@@ -183,11 +188,15 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
                                                 })()}
                                             </div>
                                         </div>
-                                        {
-                                            item.type === 'update'
-                                                ? <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动更新" onClick={(e) => auto_update_item(e, item)}></div>
-                                                : ''
-                                        }
+                                        {(() => {
+                                            if (item.type === 'update') {
+                                                return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动更新" onClick={(e) => auto_update_item(e, item)}></div>;
+                                            }
+                                            if (item.type === 'add') {
+                                                return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动添加" onClick={(e) => auto_add_item(e, item)}></div>;
+                                            }
+                                            return '';
+                                        })()}
                                         <div className="i-arcticons:shopify un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'shopify_background', item)}></div>
                                         <div className="i-logos:shopify un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'shopify', item)}></div>
                                         <div className="i-devicon:amazonwebservices-wordmark un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'amazon', item)}></div>

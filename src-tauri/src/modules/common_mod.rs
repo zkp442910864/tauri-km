@@ -104,7 +104,7 @@ pub async fn task_download_imgs(
             // println!("DDD:::::11111");
             let (_, img_u8) = get_image_v2(url);
             // println!("DDD:::::22222");
-            let file_name = format!("{}-{}.png", sku, index);
+            let file_name = format!("{}-{}-{:0>4}.png", sku, folder_type, index);
             let save_path = Path::new(&full_folder_path).join(file_name);
             let _ = fs::write(save_path, img_u8);
             // println!("DDD:::::33333");

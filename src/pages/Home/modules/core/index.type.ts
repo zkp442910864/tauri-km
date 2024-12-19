@@ -4,6 +4,11 @@ type TParseType =
     'shopify_product_id' |
     'shopify_sku_id' |
 
+    'amazon_product_sku' |
+    'amazon_address_url' |
+    'amazon_product_brand' |
+    'amazon_product_collections' |
+
     'get_title' |
     'get_desc_text' |
     'get_price' |
@@ -11,7 +16,6 @@ type TParseType =
     'get_detail' |
     'get_features_specs' |
     'get_content_json' |
-    'amazon_address_url' |
     'get_sku_model' |
 
     'get_banner_imgs' |

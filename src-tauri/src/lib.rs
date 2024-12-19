@@ -60,9 +60,9 @@ pub fn run() {
 
             shopify_mod::task_shopify_store_login,
             shopify_mod::task_shopify_store_login_status,
-            shopify_mod::task_shopify_store_product_edit_open,
+            shopify_mod::task_shopify_store_product_open,
             shopify_mod::task_shopify_store_product_update_item,
-            shopify_mod::task_shopify_store_product_edit_finish,
+            shopify_mod::task_shopify_store_product_finish,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

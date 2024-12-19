@@ -442,6 +442,14 @@ export class AmazonAction {
                     // 数据抓取
                     {
                         const parse_data: Exclude<IAmazonData['detail'], undefined> = [];
+
+                        // 独立属性
+                        parse_data.push(new IHtmlParseData('amazon_address_url', fullUrl));
+                        parse_data.push(new IHtmlParseData('amazon_product_sku', sku));
+                        parse_data.push(new IHtmlParseData('amazon_product_brand', 'CHONCHOW'));
+                        parse_data.push(new IHtmlParseData('amazon_product_collections', ['Other',].join(',')));
+                        // parse_data.push(new IHtmlParseData('amazon_product_brand', sku));
+
                         // 标题
                         parse_data.push(get_title(dom));
                         // 商品轮播图
@@ -460,8 +468,6 @@ export class AmazonAction {
                         parse_data.push(get_content_json(dom));
                         // sku关联
                         parse_data.push(new IHtmlParseData('get_relevance_tag', variant_skus.length > 1 ? `关联:${variant_skus.join('+')}` : ''));
-
-                        parse_data.push(new IHtmlParseData('amazon_address_url', fullUrl));
 
                         const error_data = parse_data.find(ii => !!ii.error);
                         // if (!!error_data && fail_count < this.retry_count - 1) {
