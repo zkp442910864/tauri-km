@@ -1,4 +1,4 @@
-import { Dropdown, List, message, Tag } from 'antd';
+import { Button, Dropdown, List, message, Popover, Tag } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useRef } from 'react';
 import { CompareData } from '../modules/core/compare';
@@ -8,12 +8,13 @@ import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useDebounceEffect, useStateExtend } from '@/hooks';
 import { ShopifyStoreAction } from '../modules/core/shopify_store_action';
 
-export const ResultData: FC<{result: CompareData[], shopify_store_url: string, shopify_domain: string, amazon_domain: string, onClick: (item: unknown) => void}> = ({
+export const ResultData: FC<{result: CompareData[], shopify_store_url: string, shopify_domain: string, amazon_domain: string, onClick: (item: unknown) => void, onLoading: (val: boolean) => void}> = ({
     result,
     shopify_domain,
     amazon_domain,
     shopify_store_url,
     onClick,
+    onLoading,
 }) => {
 
     const [, update,] = useStateExtend({});
@@ -28,6 +29,7 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
         remove: 'color-red',
         warn: 'color-await',
         update: 'color-main',
+        fit: 'color-gray',
     };
 
     const link_click = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, type: 'shopify' | 'amazon' | 'shopify_background', item: CompareData<IAmazonData>) => {
@@ -52,6 +54,20 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
     const auto_add_item = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, item: CompareData<IAmazonData>) => {
         e.stopPropagation();
         void state.shopify_store_action?.auto_add(item);
+    };
+
+    const type_all_auto_excute = async (type: keyof typeof color_map) => {
+        const arr = result.filter(ii => ii.type === type);
+        onLoading(true);
+        for (const item of arr) {
+            if (item.type === 'update') {
+                await state.shopify_store_action?.auto_update(item);
+            }
+            else if (item.type === 'add') {
+                await state.shopify_store_action?.auto_add(item);
+            }
+        }
+        onLoading(false);
     };
 
     const tag_click = (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: TParseTypeMsg, item: CompareData<IAmazonData>) => {
@@ -96,9 +112,7 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
                 content = data.data as string;
                 break;
             case 'get_content_json': {
-                const json = JSON.parse(data.data as string) as Partial<IDetailContentRoot>;
-                delete json.img_urls;
-                content = JSON.stringify(json);
+                content = data.data as string;
                 break;
             }
             case 'get_sku_model':
@@ -134,10 +148,19 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
         <>
             <div className="flex f-items-center p-b-4 un-gap-6px bg-f un-sticky un-top-52px un-z2">
                 <span className="pointer" onClick={() => toggle_type('')}>全部:{result.length}</span>
-                <span className={classNames(color_map.add, 'pointer')} onClick={() => toggle_type('add')}>新增:{result.filter(ii => ii.type === 'add').length}</span>
-                <span className={classNames(color_map.update, 'pointer')} onClick={() => toggle_type('update')}>修改:{result.filter(ii => ii.type === 'update').length}</span>
+                <span className={classNames(color_map.add, 'pointer')} onClick={() => toggle_type('add')}>
+                    <Popover placement="bottomLeft" title="全自动添加" content={<Button size="small" type="primary" onClick={() => void type_all_auto_excute('add')}>执行</Button>}>
+                        新增:{result.filter(ii => ii.type === 'add').length}
+                    </Popover>
+                </span>
+                <span className={classNames(color_map.update, 'pointer')} onClick={() => toggle_type('update')}>
+                    <Popover placement="bottomLeft" title="全自动更新" content={<Button size="small" type="primary" onClick={() => void type_all_auto_excute('update')}>执行</Button>}>
+                        修改:{result.filter(ii => ii.type === 'update').length}
+                    </Popover>
+                </span>
                 <span className={classNames(color_map.warn, 'pointer')} onClick={() => toggle_type('warn')}>警告:{result.filter(ii => ii.type === 'warn').length}</span>
                 <span className={classNames(color_map.remove, 'pointer')} onClick={() => toggle_type('remove')}>删除:{result.filter(ii => ii.type === 'remove').length}</span>
+                <span className={classNames(color_map.fit, 'pointer')} onClick={() => toggle_type('fit')}>一致:{result.filter(ii => ii.type === 'fit').length}</span>
                 <span className="f-1"></span>
                 {
                     state.record_val.length
@@ -195,6 +218,7 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
                                             if (item.type === 'add') {
                                                 return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动添加" onClick={(e) => auto_add_item(e, item)}></div>;
                                             }
+                                            return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动添加" onClick={(e) => auto_add_item(e, item)}></div>;
                                             return '';
                                         })()}
                                         <div className="i-arcticons:shopify un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'shopify_background', item)}></div>
@@ -223,10 +247,12 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
                                                 if (e.key === 'record_remove') {
                                                     state.record_val.push(item.data.sku);
                                                     remove();
+                                                    onClick({});
                                                     void update({});
                                                 }
                                                 else if (e.key === 'remove') {
                                                     remove();
+                                                    onClick({});
                                                     void update({});
                                                 }
                                             },

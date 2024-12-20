@@ -107,25 +107,27 @@ export class ShopifyStoreAction {
             const key = type.split('.')[0] as TParseType;
             const update_data = data.update_data?.detail_map?.[key];
             // debugger;
-            if (update_data?.error instanceof Error) {
+            if (update_data?.error instanceof Error || !update_data) {
                 //
             }
             else {
-                let value = update_data?.data || '';
+                let value = update_data.data || '';
                 if (type === 'get_price') {
                     const v_id = shopify_data?.['shopify_sku_id'].data as number | null;
                     value = v_id
                         ? `${v_id}&&${(update_data?.data as IOtherData).price}&&${(update_data?.data as IOtherData).old_price}`
                         : `${(update_data?.data as IOtherData).price}&&${(update_data?.data as IOtherData).old_price}`;
                 }
+                else if (type === 'get_banner_imgs') {
+                    value = (update_data.data as string[]).join();
+                }
+                else if (type === 'get_content_imgs') {
+                    value = (update_data.data as string[]).join();
+                }
                 else if (type === 'get_desc_text') {
-                    value = (update_data?.data as IOtherData).html!;
+                    value = (update_data.data as IOtherData).html!;
                 }
-                else if (type === 'get_content_json') {
-                    const json = JSON.parse(value as string) as Partial<IDetailContentRoot>;
-                    delete json.img_urls;
-                    value = JSON.stringify(json);
-                }
+
                 const res = await invoke<string>('task_shopify_store_product_update_item', {
                     url: `${this.store_url}/products/${p_id}`,
                     inputType: type,
@@ -165,11 +167,6 @@ export class ShopifyStoreAction {
             else if (item.type === 'get_desc_text') {
                 value = (item.data as IOtherData).html!;
             }
-            else if (item.type === 'get_content_json') {
-                const json = JSON.parse(value as string) as Partial<IDetailContentRoot>;
-                delete json.img_urls;
-                value = JSON.stringify(json);
-            }
 
             if (!value) continue;
             const res = await invoke<string>('task_shopify_store_product_update_item', {
@@ -190,7 +187,7 @@ export class ShopifyStoreAction {
 
     /** 都操作完了后,执行完成函数,并关闭窗口 */
     async save_data(data: CompareData<IAmazonData>, tab_id: string) {
-        await this.confirm_next('是否保存数据');
+        // await this.confirm_next('是否保存数据');
         const res = await invoke<string>('task_shopify_store_product_finish', { tabId: tab_id, });
         const json = JSON.parse(res) as ITauriResponse<null>;
 

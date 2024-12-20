@@ -84,7 +84,6 @@ export class IHtmlParseData<T> {
 interface IDetailContentRoot {
     layout: 'style2';
     config: IDetailContentData[];
-    img_urls: string[];
 }
 
 interface IDetailContentData {

@@ -17,9 +17,11 @@ export class Compare {
         LogOrErrorSet.get_instance().push_log('开始进行数据比对', { title: true, });
 
         const arr: CompareData[] = [];
-        const add_data = this.each_add_data();
-        const remove_data = this.each_remove_data();
-        const update_data = await this.each_update_data();
+        /** 防止被使用过的sku,重复使用 */
+        const use_skus: string[] = [];
+        const add_data = await this.each_add_data(use_skus);
+        const remove_data = this.each_remove_data(use_skus);
+        const update_data = await this.each_update_data(use_skus);
 
         add_data.length && arr.push(...add_data);
         remove_data.length && arr.push(...remove_data);
@@ -31,31 +33,59 @@ export class Compare {
     }
 
     /** 遍历出新增数据 (以亚马逊sku为主进行遍历,匹配shopify,匹配不上的就是新增) */
-    each_add_data = () => {
+    each_add_data = async (use_skus: string[]) => {
         LogOrErrorSet.get_instance().push_log('遍历新增数据', { title: true, });
+        const arr = [];
+        const new_sku_data = this.amazon_data.sku_data.filter(item => {
+            // 被使用过的sku,不再使用
+            if (use_skus.indexOf(item.sku) > -1) return false;
 
-        const new_sku_data = this.amazon_data.sku_data.filter(ii => !this.shopify_data.sku_map[ii.sku]);
-        return new_sku_data.map(item => {
-            if (item.detail_map?.get_banner_imgs) {
-                void this.download_imgs(item.sku, 'banner', item.detail_map.get_banner_imgs.data as string[]);
+            if (!this.shopify_data.sku_map[item.sku]) {
+                use_skus.push(item.sku);
+                return true;
             }
-            if (item.detail_map?.get_content_imgs) {
-                void this.download_imgs(item.sku, 'desc', item.detail_map.get_content_imgs.data as string[]);
+            else {
+                return false;
             }
-            return new CompareData('amazon', 'add', item);
         });
+
+        for (const item of new_sku_data) {
+            await this.handle_add_data(item);
+            arr.push(new CompareData('amazon', 'add', item));
+        }
+
+        return arr;
     };
 
-    /** 遍历出删除数据 (以shopify的sku为主进行遍历,匹配亚马逊sku,匹配不到的就是删除) */
-    each_remove_data = () => {
+    /**
+     * 遍历出删除数据 (以shopify的sku为主进行遍历,匹配亚马逊sku,匹配不到的就是删除)
+     *  增加规则
+     *      1. 如果亚马逊的sku价格解析失败,归删除
+     */
+    each_remove_data = (use_skus: string[]) => {
         LogOrErrorSet.get_instance().push_log('遍历删除数据', { title: true, });
 
-        const remove_sku_data = this.shopify_data.sku_data.filter(ii => !this.amazon_data.sku_map[ii.sku]);
+        const remove_sku_data = this.shopify_data.sku_data.filter(ii => {
+            const amazon_item = this.amazon_data.sku_map[ii.sku];
+            // 被使用过的sku,不再使用
+            if (use_skus.indexOf(ii.sku) > -1) return false;
+
+            if (
+                !amazon_item ||
+                !amazon_item.detail_map?.get_price ||
+                amazon_item.detail_map?.get_price.error ||
+                !amazon_item.detail_map?.get_price.data
+            ) {
+                use_skus.push(ii.sku);
+                return true;
+            }
+            return false;
+        });
         return remove_sku_data.map(ii => new CompareData('shopify', 'remove', ii));
     };
 
     /** 遍历出修改数据 (以shopify的sku为主进行遍历) */
-    each_update_data = () => {
+    each_update_data = (use_skus: string[]) => {
         LogOrErrorSet.get_instance().push_log('遍历更新数据', { is_fill_row: true, title: true, });
         const arr: CompareData<IAmazonData>[] = [];
         // LogOrErrorSet.get_instance().push_log('对比', { is_fill_row: true, });
@@ -67,13 +97,20 @@ export class Compare {
                     LogOrErrorSet.get_instance().push_log(`对比: ${shopify_item.sku}`, { repeat: true, });
 
                     const amazon_item = this.amazon_data.sku_map[shopify_item.sku];
+
+                    // 被使用过的sku,不进行对比
+                    if (use_skus.indexOf(shopify_item.sku) > -1) continue;
+                    // 数据不完整,不进行对比
                     if (!amazon_item) continue;
                     if (!amazon_item.detail || !amazon_item.detail_map) {
-                        arr.push(new CompareData('amazon', 'warn', amazon_item).as_explain('对比逻辑: 详情可能是获取失败了, 请检查采集逻辑'));
+                        // arr.push(new CompareData('amazon', 'warn', amazon_item).as_explain('对比逻辑: 详情可能是获取失败了, 请检查采集逻辑'));
+                        arr.push(new CompareData('shopify', 'remove', shopify_item));
                         continue;
                     }
                     if (!shopify_item.detail) {
-                        arr.push(new CompareData('shopify', 'warn', shopify_item).as_explain('对比逻辑: 详情可能是获取失败了, 请检查采集逻辑'));
+                        // arr.push(new CompareData('shopify', 'warn', shopify_item).as_explain('对比逻辑: 详情可能是获取失败了, 请检查采集逻辑'));
+                        await this.handle_add_data(amazon_item);
+                        arr.push(new CompareData('amazon', 'add', amazon_item));
                         continue;
                     }
 
@@ -83,6 +120,9 @@ export class Compare {
 
                         if (check_data.is_update) {
                             arr.push(new CompareData('shopify', 'update', shopify_item).as_update_data(amazon_item).as_explain(check_data.msgs.join()));
+                        }
+                        else {
+                            arr.push(new CompareData('shopify', 'fit', shopify_item).as_update_data(amazon_item).as_explain(check_data.msgs.join()));
                         }
                     }
                     catch (error) {
@@ -148,7 +188,7 @@ export class Compare {
             else if (shopify_item.type === 'get_sku_model') {
                 const shopify_val = shopify_item.data as string;
                 const amazon_val = amazon_item.data as string;
-                if (shopify_val.length !== amazon_val.length) {
+                if (shopify_val !== amazon_val) {
                     is_update = true;
                     msgs.push('get_sku_model');
                 }
@@ -180,28 +220,26 @@ export class Compare {
                     msgs.push('get_features_specs');
                 }
             }
+            else if (shopify_item.type === 'get_content_imgs') {
+                const shopify_val = shopify_item.data as string[];
+                const amazon_val = amazon_item.data as string[];
+                if (shopify_val.length !== amazon_val.length) {
+                    is_update = true;
+                    msgs.push('get_content_imgs');
+                    await this.download_imgs(amazon.sku, 'desc', amazon_val);
+                }
+                else if (await this.compare_imgs(shopify.sku, 'desc', shopify_val, amazon_val)) {
+                    is_update = true;
+                    msgs.push('get_content_imgs');
+                }
+            }
             else if (shopify_item.type === 'get_content_json') {
                 try {
-                    const shopify_json_val = JSON.parse(shopify_item.data as string) as Record<string, unknown>;
+                    const shopify_json_val = JSON.parse(shopify_item.data as string) as IDetailContentRoot;
                     const amazon_json_val = JSON.parse(amazon_item.data as string) as IDetailContentRoot;
-                    const shopify_imgs = shopify.detail_map!.get_content_imgs.data as string[];
-                    const amazon_imgs = amazon_json_val.img_urls;
                     // amazon_json_val.img_urls
 
-                    if (shopify_imgs.length !== amazon_imgs.length) {
-                        is_update = true;
-                        msgs.push('get_content_imgs');
-                        await this.download_imgs(amazon.sku, 'desc', amazon_imgs);
-                    }
-                    else if (await this.compare_imgs(shopify.sku, 'desc', shopify_imgs, amazon_imgs)) {
-                        is_update = true;
-                        msgs.push('get_content_imgs');
-                    }
-
-                    if (this.sort_json(shopify_json_val) !== this.sort_json(omit(amazon_json_val, ['img_urls',]) as unknown as Record<string, unknown>)) {
-                        // console.log(this.sort_json(shopify_json_val));
-                        // console.log(this.sort_json(omit(amazon_json_val, ['img_urls',])));
-
+                    if (this.sort_json(shopify_json_val) !== this.sort_json(amazon_json_val)) {
                         is_update = true;
                         msgs.push('get_content_json');
                     }
@@ -226,8 +264,8 @@ export class Compare {
         return { is_update, msgs, };
     }
 
-    sort_json<T extends Record<string, unknown>>(data: T) {
-        const crush_data = crush(data) as T;
+    sort_json<T extends object>(data: T) {
+        const crush_data = crush(data) as Record<string, unknown>;
         const keys = alphabetical(Object.keys(crush_data), ii => ii);
         const new_data = keys.reduce((map, key) => {
             map[key] = crush_data[key];
@@ -235,6 +273,15 @@ export class Compare {
         }, {} as Record<string, unknown>);
 
         return JSON.stringify(new_data);
+    }
+
+    async handle_add_data(item: IAmazonData) {
+        if (item.detail_map?.get_banner_imgs) {
+            await this.download_imgs(item.sku, 'banner', item.detail_map.get_banner_imgs.data as string[]);
+        }
+        if (item.detail_map?.get_content_imgs) {
+            await this.download_imgs(item.sku, 'desc', item.detail_map.get_content_imgs.data as string[]);
+        }
     }
 
     /** 图片内容对比 */
@@ -267,7 +314,7 @@ export class Compare {
 
 
 export class CompareData<T = IAmazonData> {
-    type: 'add' | 'update' | 'remove' | 'warn';
+    type: 'add' | 'update' | 'remove' | 'warn' | 'fit';
     data_type: 'shopify' | 'amazon';
     data: T;
     /** update 的时候存入的 */

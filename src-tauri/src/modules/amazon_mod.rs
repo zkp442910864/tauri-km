@@ -36,8 +36,7 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
         if let Ok(el) = btn {
             let _ = el.click();
             true
-        }
-        else {
+        } else {
             false
         }
 
@@ -358,16 +357,19 @@ pub async fn task_amazon_images_diff_v2(
     let handle_image = async {
         let urls = [shopify_urls, amazon_urls].concat(); // 合并两个 URL 列表
 
-        let requests: Vec<_> = urls.into_iter().map(|url| {
-            spawn(async move {
-                let result = reqwest::get(&url).await.map_err(|_| "请求失败")?;
-                let bytes = result.bytes().await.map_err(|_| "获取字节失败")?;
-                Ok::<ImgResponse<Vec<u8>>, String>(ImgResponse {
-                    url,
-                    result: bytes.to_vec(),
+        let requests: Vec<_> = urls
+            .into_iter()
+            .map(|url| {
+                spawn(async move {
+                    let result = reqwest::get(&url).await.map_err(|_| "请求失败")?;
+                    let bytes = result.bytes().await.map_err(|_| "获取字节失败")?;
+                    Ok::<ImgResponse<Vec<u8>>, String>(ImgResponse {
+                        url,
+                        result: bytes.to_vec(),
+                    })
                 })
             })
-        }).collect();
+            .collect();
 
         // 执行并发请求
         let responses = join_all(requests).await;
@@ -401,7 +403,11 @@ pub async fn task_amazon_images_diff_v2(
                 let mut is_equal = false;
 
                 let mut matcher = TemplateMatcher::new();
-                matcher.match_template(shopify_img, amazon_img, MatchTemplateMethod::SumOfSquaredDifferences);
+                matcher.match_template(
+                    shopify_img,
+                    amazon_img,
+                    MatchTemplateMethod::SumOfSquaredDifferences,
+                );
                 let result = matcher.wait_for_result().unwrap();
                 let result_extremes = find_extremes(&result);
 
@@ -424,16 +430,21 @@ pub async fn task_amazon_images_diff_v2(
             let folder_path = Path::new(&sku).join(&folder_type);
             let full_folder_path = create_folder(app, folder_path.to_string_lossy().to_string());
 
-            comparison_results.iter().enumerate().for_each(|(index, item)| {
-                let file_name = format!("{}-{}.png", sku, index);
-                let save_path = Path::new(&full_folder_path).join(file_name);
-                // println!("save_path: {:?}", save_path);
-                let _ = fs::write(save_path, &item.download).map_err(|e| format!("写入文件错误: {}", e));
-            });
+            comparison_results
+                .iter()
+                .enumerate()
+                .for_each(|(index, item)| {
+                    let file_name = format!("{}-{}.png", sku, index);
+                    let save_path = Path::new(&full_folder_path).join(file_name);
+                    // println!("save_path: {:?}", save_path);
+                    let _ = fs::write(save_path, &item.download)
+                        .map_err(|e| format!("写入文件错误: {}", e));
+                });
         }
 
         is_update
-    }).await;
+    })
+    .await;
 
     // 等待结果
     // let output = result.await.unwrap_or_else(|_| "任务执行失败".to_string());

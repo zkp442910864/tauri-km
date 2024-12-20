@@ -129,7 +129,6 @@ pub fn get_image_v2(url: &str) -> (Image<'_>, Vec<u8>) {
 
     let match_img = v8_to_img(val_vec.clone());
 
-
     (match_img, val_vec)
 }
 

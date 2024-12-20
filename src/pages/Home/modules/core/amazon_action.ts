@@ -103,7 +103,7 @@ export class AmazonAction {
 
     /** 获取每个sku下的详情 */
     async fetch_sku_detail(url: string, skus: string[]) {
-        let variant_skus: string[] = [];
+        const variant_skus: string[] = [];
 
         const get_model = (dom: Document) => {
             return JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
@@ -127,9 +127,9 @@ export class AmazonAction {
                         .replace('return data;\n});', 'return data;\n})();')
                         .replace('A.$.parseJSON', 'JSON.parse')
                         .trim()
-                ) as {colorImages: {initial: {hiRes: string}[]}};
+                ) as {colorImages: {initial: {hiRes?: string, large: string}[]}};
                 // console.log(data);
-                return new IHtmlParseData('get_banner_imgs', data.colorImages.initial.map(ii => ii.hiRes));
+                return new IHtmlParseData('get_banner_imgs', data.colorImages.initial.map(ii => ii.hiRes || ii.large));
             }
             catch (error) {
                 // console.error(error);
@@ -150,17 +150,17 @@ export class AmazonAction {
                 }
             });
 
-            if (price === -1) {
-                return new IHtmlParseData('get_price', null, '解析失败', new Error('解析失败'));
-            }
+            // if (price === -1) {
+            //     return new IHtmlParseData('get_price', null, '解析失败', new Error('解析失败'));
+            // }
 
-            return new IHtmlParseData('get_price', { price, old_price, });
+            return new IHtmlParseData('get_price', price === -1 ? null : { price, old_price, });
         };
 
         const get_sku_model = (dom: Document, sku: string) => {
             try {
                 const data = JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
-                return new IHtmlParseData('get_sku_model', data[sku].join());
+                return new IHtmlParseData('get_sku_model', data[sku].join().replaceAll(',', ' '));
             }
             catch (error) {
                 return new IHtmlParseData('get_sku_model', 'no model');
@@ -168,10 +168,17 @@ export class AmazonAction {
             }
         };
 
-        // const get_variant_skus = (dom: Document) => {
-        //     // dimensionValuesDisplayData
-        //     return [...dom.querySelectorAll<HTMLLIElement>('div[id^="variation"] li'),].map(ii => ii.dataset.defaultasin);
-        // };
+        const get_desc_text = async (dom: Document) => {
+            try {
+                const el = dom.querySelector('#feature-bullets>ul');
+                const html = el?.outerHTML || '';
+                const text = await get_real_dom_text(html);
+                return new IHtmlParseData('get_desc_text', { html, text: text, });
+            }
+            catch (error) {
+                return new IHtmlParseData('get_desc_text', null, '解析失败', error);
+            }
+        };
 
         const get_detail = (dom: Document) => {
             try {
@@ -192,15 +199,55 @@ export class AmazonAction {
             }
         };
 
-        const get_desc_text = async (dom: Document) => {
+        const get_detail_v2 = (dom: Document) => {
             try {
-                const el: HTMLElement = dom.querySelector('#feature-bullets>ul')!;
-                const html = el.outerHTML;
-                const text = await get_real_dom_text(html);
-                return new IHtmlParseData('get_desc_text', { html, text: text, });
+                const data: Array<{title: string, value: string}> = [];
+                const cacheSet = new Set<string>();
+                const blacklist = [
+                    'ASIN'.toLocaleLowerCase(),
+                    'Best Sellers Rank'.toLocaleLowerCase(),
+                    'Customer Reviews'.toLocaleLowerCase(),
+                ];
+
+                const push_val = (title: string, text: string) => {
+                    if (!title || !text) return;
+                    if (!cacheSet.has(title.toLocaleLowerCase())) {
+                        data.push({ title, value: text, });
+                        cacheSet.add(title.toLocaleLowerCase());
+                    }
+                };
+
+                dom.querySelectorAll('#productOverview_feature_div tr.a-spacing-small')?.forEach((tr) => {
+                    if (tr.querySelector('span.a-truncate-full')) {
+                        const row = tr.children as unknown as HTMLTableCellElement[];
+                        const title = row[0].querySelector('span')!.innerText.trim();
+                        const text =
+                            (row[1].querySelector('span.a-truncate-full') as HTMLSpanElement)?.innerText.trim()
+                            || row[1].querySelector('span')!.innerText.trim();
+
+                        push_val(title, text);
+                    }
+                    else {
+                        const [title, text,] = (tr as HTMLTableCellElement).innerText.trim().split(/\s{4,}/);
+                        push_val(title, text);
+                    }
+                });
+
+                dom.querySelectorAll('#productOverview_feature_div #glance_icons_div tr:not([class])')?.forEach((tr) => {
+                    const [title, text,] = (tr as HTMLTableCellElement).innerText.trim().split(/\s{4,}/);
+                    push_val(title, text);
+                });
+
+                dom.querySelectorAll('#prodDetails table tr')?.forEach((tr) => {
+                    const [title, text,] = (tr as HTMLTableCellElement).innerText.trim().split(/\s{4,}/);
+                    if (blacklist.includes(title.toLocaleLowerCase())) return;
+                    push_val(title, text);
+                });
+
+                return new IHtmlParseData('get_detail', data.map(ii => `${ii.title}:${ii.value}`).join('\n'));
             }
             catch (error) {
-                return new IHtmlParseData('get_desc_text', null, '解析失败', error);
+                return new IHtmlParseData('get_detail', null, '解析失败', error);
             }
         };
 
@@ -245,33 +292,33 @@ export class AmazonAction {
             // }
         };
 
-        const get_content_json = (dom: Document) => {
+        const get_content_json = async (dom: Document) => {
+            const img_urls: string[] = [];
             const data: IDetailContentRoot = {
                 layout: 'style2',
-                img_urls: [],
                 config: [],
             };
 
             const pushImg = (node: HTMLImageElement, arr = data.config) => {
-                data.img_urls.push(node.dataset.src ?? node.src);
+                img_urls.push(node.dataset.src ?? node.src);
                 arr.push({
                     type: 'img',
                     alt: node.alt,
                 });
             };
 
-            const pushTitle = (node: HTMLDivElement, arr = data.config) => {
+            const pushTitle = async (node: HTMLDivElement, arr = data.config) => {
                 arr.push({
                     type: 'title',
-                    value: node.innerText.trim(),
+                    value: await get_real_dom_text(node.outerHTML),
                 });
             };
 
-            const pushText = (node: HTMLDivElement, arr = data.config, style?: string) => {
+            const pushText = async (node: HTMLDivElement, arr = data.config, style?: string) => {
                 if (!node.innerText.trim()) return;
                 arr.push({
                     type: 'text',
-                    value: node.innerText.trim(),
+                    value: await get_real_dom_text(node.outerHTML),
                     style,
                 });
             };
@@ -291,8 +338,8 @@ export class AmazonAction {
                 });
             };
 
-            const each = (nodeArr: NodeListOf<Element> | Element[], arr = data.config) => {
-                nodeArr.forEach((item) => {
+            const each = async (nodeArr: NodeListOf<Element> | Element[], arr = data.config) => {
+                for (const item of nodeArr) {
                     if (!item) return;
                     try {
 
@@ -308,31 +355,31 @@ export class AmazonAction {
                         else if (item.classList.contains('apm-floatleft') && item.classList.contains('apm-wrap')) {
                             const row: IDetailContentData[] = [];
                             item.querySelector('.apm-leftimage')
-                                && each([item.querySelector('.apm-leftimage')!,], row);
+                                && await each([item.querySelector('.apm-leftimage')!,], row);
                             item.querySelector('.apm-centerthirdcol')
-                                && each([item.querySelector('.apm-centerthirdcol')!,], row);
+                                && await each([item.querySelector('.apm-centerthirdcol')!,], row);
                             item.querySelector('.apm-rightthirdcol')
-                                && each([item.querySelector('.apm-rightthirdcol')!,], row);
+                                && await each([item.querySelector('.apm-rightthirdcol')!,], row);
 
                             row.length && pushRow(row, arr);
                         }
                         else if (item.classList.contains('apm-sidemodule') && item.classList.contains('apm-spacing')) {
                             const row: IDetailContentData[] = [];
                             item.querySelector('.apm-sidemodule-textleft')
-                                && each([item.querySelector('.apm-sidemodule-textleft')!,], row);
+                                && await each([item.querySelector('.apm-sidemodule-textleft')!,], row);
                             item.querySelector('.apm-sidemodule-imageright')
-                                && each([item.querySelector('.apm-sidemodule-imageright')!,], row);
+                                && await each([item.querySelector('.apm-sidemodule-imageright')!,], row);
 
                             item.querySelector('.apm-sidemodule-imageleft')
-                                && each([item.querySelector('.apm-sidemodule-imageleft')!,], row);
+                                && await each([item.querySelector('.apm-sidemodule-imageleft')!,], row);
                             item.querySelector('.apm-sidemodule-textright')
-                                && each([item.querySelector('.apm-sidemodule-textright')!,], row);
+                                && await each([item.querySelector('.apm-sidemodule-textright')!,], row);
 
                             row.length && pushRow(row, arr);
                         }
                         else if (item.querySelector('.apm-fixed-width .apm-flex')) {
                             const row: IDetailContentData[] = [];
-                            each([item.querySelector('.apm-fixed-width .apm-flex')!,], row);
+                            await each([item.querySelector('.apm-fixed-width .apm-flex')!,], row);
 
                             row.length && pushRow(row, arr, 'average-width');
                         }
@@ -346,65 +393,74 @@ export class AmazonAction {
                             item.classList.contains('apm-rightthirdcol')
                         ) {
                             const columns: IDetailContentData[] = [];
-                            each(item.childNodes as NodeListOf<Element>, columns);
+                            await each(item.childNodes as NodeListOf<Element>, columns);
                             columns.length && pushColumns(columns, arr);
                         }
                         // 特殊处理
                         else if (item.classList.contains('apm-eventhirdcol-table')) {
                             const row: IDetailContentData[] = [];
                             const [tr1, tr2,] = item.querySelectorAll('tr');
-                            tr1.querySelectorAll(':not(noscript)>img').forEach((item, index) => {
+                            for (const index in tr1.querySelectorAll(':not(noscript)>img')) {
+                                const item = tr1.querySelectorAll(':not(noscript)>img')[index];
                                 const columns: IDetailContentData[] = [];
-                                each([item,], columns);
-                                each([tr2.querySelectorAll('.apm-top')[index],], columns);
+                                await each([item,], columns);
+                                await each([tr2.querySelectorAll('.apm-top')[index],], columns);
                                 columns.length && pushColumns(columns, row);
-                            });
+                            }
+                            // tr1.querySelectorAll(':not(noscript)>img').forEach((item, index) => {
+                            //     const columns: IDetailContentData[] = [];
+                            //     await each([item,], columns);
+                            //     await each([tr2.querySelectorAll('.apm-top')[index],], columns);
+                            //     columns.length && pushColumns(columns, row);
+                            // });
                             row.length && pushRow(row, arr, 'average-width');
                         }
                         else if (item.nodeName === 'LI') {
-                            pushText(item as HTMLDivElement, arr, 'marker');
+                            await pushText(item as HTMLDivElement, arr, 'marker');
                         }
                         else if (item.nodeName === 'P' && !item.querySelector('img')) {
                             const style = item.outerHTML.match(/bold/i) ? 'bold' : undefined;
-                            pushText(item as HTMLDivElement, arr, style);
+                            await pushText(item as HTMLDivElement, arr, style);
                         }
                         else if (item.nodeName.startsWith('H')) {
-                            pushTitle(item as HTMLDivElement, arr);
+                            await pushTitle(item as HTMLDivElement, arr);
                         }
                         else if (item.nodeName === 'IMG') {
                             pushImg(item as HTMLImageElement, arr);
                         }
                         else if (item.childNodes.length) {
-                            each(item.childNodes as NodeListOf<Element>, arr);
+                            await each(item.childNodes as NodeListOf<Element>, arr);
                         }
                     }
                     catch (error) {
                         console.error(item, error);
                     }
-                });
+                }
             };
 
             try {
-                // window.dddd = dom;
-                // window.asdasd = each;
-                // console.log(dom, each);
                 // each(dom.querySelectorAll('.aplus-module'));
                 // each(dom.querySelectorAll('#aplus_feature_div #aplus .aplus-module'));
                 if (dom.querySelector('#productDescription_feature_div #productDescription')) {
-                    each([dom.querySelector('#productDescription_feature_div #productDescription')!,]);
+                    await each([dom.querySelector('#productDescription_feature_div #productDescription')!,]);
                 }
                 else {
-                    each(dom.querySelectorAll('#aplus_feature_div>#aplus .aplus-module.aplus-standard'));
+                    await each(dom.querySelectorAll('#aplus_feature_div>#aplus .aplus-module.aplus-standard'));
                 }
-                // each(dom.querySelectorAll('#aplus_feature_div>#aplus .aplus-module.aplus-standard'));
-                return new IHtmlParseData('get_content_json', JSON.stringify(data));
+                return [
+                    new IHtmlParseData('get_content_imgs', img_urls),
+                    new IHtmlParseData('get_content_json', JSON.stringify(data)),
+                ];
             }
             catch (error) {
-                return new IHtmlParseData('get_content_json', null, '解析失败', error);
+                return [
+                    new IHtmlParseData('get_content_imgs', null, '解析失败', error),
+                    new IHtmlParseData('get_content_json', null, '解析失败', error),
+                ];
             }
         };
 
-        await parallel(3, skus, async (sku) => {
+        await parallel(5, skus, async (sku) => {
             const fullUrl = `${url}/${sku}?${stringify({ ...this.fixed_params, })}`;
 
             try {
@@ -421,6 +477,7 @@ export class AmazonAction {
                     const html = json_data.data || '';
                     const domParser = new DOMParser();
                     const dom = domParser.parseFromString(html, 'text/html');
+                    let inline_variant_skus = [] as string[];
 
                     // 好像会出现动态加载的情况,所以延迟下
                     await sleep(fail_count);
@@ -430,9 +487,10 @@ export class AmazonAction {
                         try {
                             const data = get_model(dom);
                             Object.keys(data).forEach((sku) => {
-                                variant_skus.push(sku);
+                                inline_variant_skus.push(sku);
                             });
-                            variant_skus = alphabetical(variant_skus, ii => ii);
+                            inline_variant_skus = alphabetical(inline_variant_skus, ii => ii);
+                            variant_skus.push(...inline_variant_skus);
                         }
                         catch (error) {
                             LogOrErrorSet.get_instance().push_log(`解析get_model失败: ${fullUrl} \n ${LogOrErrorSet.get_instance().save_error(error)}`, { error: true, is_fill_row: true, });
@@ -459,15 +517,16 @@ export class AmazonAction {
                         // 商品型号
                         parse_data.push(get_sku_model(dom, sku));
                         // 商品详情
-                        parse_data.push(get_detail(dom));
+                        // parse_data.push(get_detail(dom));
+                        parse_data.push(get_detail_v2(dom));
                         // 商品描述文案
                         parse_data.push(await get_desc_text(dom));
                         // 商品功能与规格
-                        parse_data.push(get_features_specs(dom));
+                        // parse_data.push(get_features_specs(dom));
                         // 商品详情内容(图 + 数据json)
-                        parse_data.push(get_content_json(dom));
+                        parse_data.push(...await get_content_json(dom));
                         // sku关联
-                        parse_data.push(new IHtmlParseData('get_relevance_tag', variant_skus.length > 1 ? `关联:${variant_skus.join('+')}` : ''));
+                        parse_data.push(new IHtmlParseData('get_relevance_tag', inline_variant_skus.length > 1 ? `关联:${inline_variant_skus.join('+')}` : ''));
 
                         const error_data = parse_data.find(ii => !!ii.error);
                         // if (!!error_data && fail_count < this.retry_count - 1) {

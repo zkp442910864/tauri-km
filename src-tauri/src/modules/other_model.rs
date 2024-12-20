@@ -1,4 +1,3 @@
-
 use phf::phf_map;
 use serde::{Deserialize, Serialize};
 
@@ -69,7 +68,6 @@ pub enum TParseTypeMsg {
     GetSkuModelAdd,
     AmazonProductSkuAdd,
     GetBannerImgsAdd,
-    GetContentImgsAdd,
     AmazonProductBrandAdd,
     AmazonProductCollectionsAdd,
 }
@@ -98,7 +96,7 @@ pub static PARSE_TYPE_MAP: phf::Map<&'static str, TParseTypeMsg> = phf_map! {
     "get_banner_imgs" => TParseTypeMsg::GetBannerImgs,
     "get_banner_imgs.add" => TParseTypeMsg::GetBannerImgsAdd,
     "get_content_imgs" => TParseTypeMsg::GetContentImgs,
-    "get_content_imgs.add" => TParseTypeMsg::GetContentImgsAdd,
+    "get_content_imgs.add" => TParseTypeMsg::GetContentImgs,
     "amazon_product_brand.add" => TParseTypeMsg::AmazonProductBrandAdd,
     "amazon_product_collections.add" => TParseTypeMsg::AmazonProductCollectionsAdd,
 

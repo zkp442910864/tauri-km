@@ -158,9 +158,9 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('get_sku_model', data.sku_model || ''));
         new_data.push(new IHtmlParseData('get_relevance_tag', data.relevance_tag || ''));
 
-        new_data.push(new IHtmlParseData('get_detail', data.detail || ''));
         new_data.push(new IHtmlParseData('get_desc_text', await get_real_dom_text(data.desc_text || '')));
-        new_data.push(new IHtmlParseData('get_features_specs', data.features_specs || ''));
+        new_data.push(new IHtmlParseData('get_detail', data.detail || ''));
+        // new_data.push(new IHtmlParseData('get_features_specs', data.features_specs || ''));
         new_data.push(new IHtmlParseData('get_content_imgs', data.content_imgs || []));
         new_data.push(new IHtmlParseData('get_content_json', data.content_json || ''));
 

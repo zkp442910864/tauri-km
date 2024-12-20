@@ -5,9 +5,11 @@ use headless_chrome::{
     protocol::cdp::Network::{CookieParam, CookiePriority, CookieSameSite},
     Element, Tab,
 };
-use tauri::{command, AppHandle};
+use serde_json::json;
+use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use tokio::task::spawn_blocking;
+use tauri_plugin_store::{Store, StoreExt};
 
 use super::{
     common_mod::{create_folder, start_browser},
@@ -17,12 +19,15 @@ use super::{
 
 /** 打开有头页面,让用户登录 */
 #[command]
-pub async fn task_shopify_store_login(url: String) -> Result<String, String> {
+pub async fn task_shopify_store_login(app: AppHandle, url: String) -> Result<String, String> {
     let browser = &MY_BROWSER;
     let result = spawn_blocking(move || {
-        // let (tab, _) = start_browser(&url).unwrap();
+        let store = app.store("shopify_store_cookies").unwrap();
         let tab = browser.new_tab().unwrap();
         let t_id = tab.get_target_id();
+
+        let koa_val = store.get("koa_val").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
+        let koa_sig_val = store.get("koa_sig_val").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
 
         let _ = tab
             .set_cookies(vec![
@@ -30,7 +35,7 @@ pub async fn task_shopify_store_login(url: String) -> Result<String, String> {
                     domain: Some("admin.shopify.com".to_string()),
                     url: None,
                     name: "koa.sid".to_string(),
-                    value: "xxx".to_string(),
+                    value: koa_val,
                     expires: None,
                     http_only: Some(true),
                     partition_key: None,
@@ -46,7 +51,7 @@ pub async fn task_shopify_store_login(url: String) -> Result<String, String> {
                     domain: Some("admin.shopify.com".to_string()),
                     url: None,
                     name: "koa.sid.sig".to_string(),
-                    value: "xxx".to_string(),
+                    value: koa_sig_val,
                     expires: None,
                     http_only: Some(true),
                     partition_key: None,
@@ -75,10 +80,12 @@ pub async fn task_shopify_store_login(url: String) -> Result<String, String> {
 /** 确认登录状态,并关闭页面 */
 #[command]
 pub async fn task_shopify_store_login_status(
+    app: AppHandle,
     url: String,
     tab_id: String,
 ) -> Result<String, String> {
     let result = spawn_blocking(move || {
+        let store = app.store("shopify_store_cookies").unwrap();
         let tab = find_tab_v2(tab_id.as_str()).unwrap();
         let cookies_warp = tab
             .get_cookies()
@@ -87,17 +94,32 @@ pub async fn task_shopify_store_login_status(
             })
             .unwrap();
         let mut cookies = cookies_warp.iter();
-        let flag = cookies.find(|ii| match ii.name.find("koa.sid") {
-            Some(_) => true,
-            None => false,
-        });
+        let koa_sig = cookies.find(|ii| ii.name == "koa.sid.sig");
+        let koa = cookies.find(|ii| ii.name == "koa.sid" );
+
+        // println!("Log::::cookies::::{:?}", koa);
+        // println!("Log::::cookies::::{:?}", koa_sig);
+        // stores.insert("koa", koa);
+        let flag = match (koa, koa_sig) {
+            (Some(koa_val), Some(koa_sig_val)) => {
+                store.set("koa_val", json!(koa_val.value));
+                store.set("koa_sig_val", json!(koa_sig_val.value));
+                true
+            },
+            _ => false,
+        };
+        // let flag = cookies.find(|ii| match ii.name.find("koa.sid") {
+        //     Some(_) => true,
+        //     None => false,
+        // });
 
         let _ = tab.close(true);
 
-        match flag {
-            Some(_) => true,
-            None => false,
-        }
+        // match flag {
+        //     Some(_) => true,
+        //     None => false,
+        // }
+        flag
     })
     .await;
 
@@ -110,10 +132,22 @@ pub async fn task_shopify_store_login_status(
 /** 打开编辑页面 */
 #[command]
 pub async fn task_shopify_store_product_open(url: String) -> Result<String, String> {
-    let result = start_browser(&url).map_err(|e| format!("创建失败 {}", e));
+    let result = spawn_blocking(move || -> String {
+        let (tab, _) = start_browser(&url).unwrap();
+
+        confirm_loading(
+            &tab,
+            true,
+            Some("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(1)"),
+        );
+        confirm_loading(&tab, false, None);
+
+        tab.get_target_id().to_string()
+    })
+    .await;
 
     match result {
-        Ok((tab, _)) => Response::new_result(1, Some(tab.get_target_id()), None),
+        Ok(t_id) => Response::new_result(1, Some(t_id), None),
         Err(e) => Response::new_result(0, Some(false), Some(format!("异步任务失败: {}", e))),
     }
 }
@@ -150,6 +184,8 @@ pub async fn task_shopify_store_product_update_item(
                 {
                     let v_url = format!("{}/variants/{}", url, v_id);
                     let (inline_tab, _) = start_browser(&v_url).unwrap();
+
+                    confirm_loading(&inline_tab, true, Some("input[name=price]"));
 
                     let price_el = inline_tab.find_element("input[name=price]").unwrap();
                     quick_adhesive_value(&app, &price_el, &inline_tab, price);
@@ -196,7 +232,9 @@ pub async fn task_shopify_store_product_update_item(
                 let el = tab.find_element("input[name=tags]").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
                 sleep(Duration::from_millis(2000));
-                let _ = tab.press_key("Enter");
+                if data != "" {
+                    let _ = tab.press_key("Enter");
+                }
             }
             Some(TParseTypeMsg::AmazonProductBrandAdd) => {
                 let el = tab.find_element("input[name=vendor]").unwrap();
@@ -248,7 +286,13 @@ pub async fn task_shopify_store_product_update_item(
                 let el = tab.find_element("._Header_1eydo_1").unwrap();
                 let _ = el.click();
                 sleep(Duration::from_millis(1000));
-                each_tab_do(&tab, 5);
+                let metadata_btn_warp = tab.find_element("._Header_1eydo_1 button");
+                if let Ok(_) = metadata_btn_warp {
+                    each_tab_do(&tab, 5);
+                }
+                else {
+                    each_tab_do(&tab, 3);
+                }
                 let _ = app.clipboard().write_text(data);
                 let _ = tab.press_key_with_modifiers("v", Some(&[ModifierKey::Ctrl]));
                 each_tab_do(&tab, 3);
@@ -265,8 +309,9 @@ pub async fn task_shopify_store_product_update_item(
                 let _ = tab.press_key("d");
                 let _ = tab.press_key("e");
                 let _ = tab.press_key("l");
+                let box_wrap = tab.find_element("[id^=expanded-option]");
                 let btn_el_wrap = tab.find_element(".Polaris-Box>button");
-                if let Ok(btn_el) = btn_el_wrap {
+                if let (Err(_), Ok(btn_el)) = (box_wrap, btn_el_wrap) {
                     let _ = btn_el.click();
                 }
                 sleep(Duration::from_millis(1000));
@@ -292,7 +337,6 @@ pub async fn task_shopify_store_product_update_item(
                 let el = tab.find_element("input[type=file]").unwrap();
 
                 page_upload_imgs(&app, &el, &sku, "banner");
-                page_upload_imgs(&app, &el, &sku, "banner");
 
                 loop {
                     let el_warp = tab.find_element(".Polaris-Spinner");
@@ -304,25 +348,25 @@ pub async fn task_shopify_store_product_update_item(
                     }
                 }
             }
-            Some(TParseTypeMsg::GetContentImgsAdd) => {
+            Some(TParseTypeMsg::GetContentImgs) => {
                 let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(4)").unwrap().click();
-                sleep(Duration::from_millis(100));
-                let _ = tab.press_key("Enter");
-
                 sleep(Duration::from_millis(1000));
+                // let _ = tab.press_key("Enter");
+
+                let clear_btn_warp = tab.find_element("div[class^=_EditField_] div:not([class]):not([style])>div>div.Polaris-LegacyStack>div:nth-child(2)");
+                if let Ok(clear_btn) = clear_btn_warp {
+                    let _ = clear_btn.click();
+                    sleep(Duration::from_millis(500));
+                }
+
+                let _ = tab.find_element("div[class^=_EditField_] div:not([class]):not([style])>div>div.Polaris-LegacyStack>div:nth-child(1)").unwrap().click();
+                sleep(Duration::from_millis(1000));
+
                 let upload_input = tab.find_element("div[role=dialog] input[type=file]").unwrap();
                 page_upload_imgs(&app, &upload_input, &sku, "desc");
 
-                loop {
-                    let el_warp = tab.find_element("div[role=dialog] button[class^=_CancelButton]");
-                    if let Ok(el) = el_warp {
-                        sleep(Duration::from_millis(1000));
-                    }
-                    else {
-                        sleep(Duration::from_millis(2000));
-                        break;
-                    }
-                }
+                confirm_loading(&tab, false, Some("div[role=dialog] button[class^=_CancelButton]"));
+                confirm_loading(&tab, true, Some("div[role=dialog] div[class^=_HeaderIcon]"));
 
                 sleep(Duration::from_millis(1000));
                 let _ = tab.find_element("div[role=dialog] .Polaris-Modal-Footer button.Polaris-Button--variantPrimary").unwrap().click();
@@ -369,7 +413,7 @@ pub async fn task_shopify_store_product_finish(tab_id: String) -> Result<String,
         let tab = find_tab_v2(tab_id.as_str()).unwrap();
         let save_el = tab.find_element("button[type=submit]").unwrap();
         let _ = save_el.click();
-        sleep(Duration::from_millis(2000));
+        sleep(Duration::from_millis(5000));
 
         let _ = tab.close(true);
         true
@@ -414,5 +458,33 @@ fn quick_adhesive_value(app: &AppHandle, el: &Element<'_>, tab: &Arc<Tab>, new_v
 fn each_tab_do(tab: &Arc<Tab>, count: usize) {
     for _ in 1..=count {
         let _ = tab.press_key("Tab");
+    }
+}
+
+/**
+ * wait_append true等待元素出现,false等待元素消失
+ */
+fn confirm_loading(tab: &Arc<Tab>, wait_append: bool, keywords: Option<&str>) {
+    loop {
+        let key = if let Some(val) = keywords {
+            val
+        } else {
+            "div[class^=Polaris-Skeleton]"
+        };
+        let el_warp = tab.find_element(key);
+
+        if wait_append {
+            if let Ok(_) = el_warp {
+                return;
+            } else {
+                sleep(Duration::from_millis(1000));
+            }
+        } else {
+            if let Ok(_) = el_warp {
+                sleep(Duration::from_millis(1000));
+            } else {
+                return;
+            }
+        }
     }
 }

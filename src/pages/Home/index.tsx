@@ -173,7 +173,7 @@ const Home = () => {
                     }}
                 />
                 <Button type="primary" onClick={() => void action()}>运行</Button>
-                <Button type="primary" onClick={() => void test()}>test</Button>
+                {/* <Button type="primary" onClick={() => void test()}>test</Button> */}
                 {/* <Button type="primary" onClick={() => void shopify_fn()}>1: shopify</Button> */}
                 {/* <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button> */}
             </div>
@@ -202,6 +202,7 @@ const Home = () => {
                                             shopify_store_url={state.shopify_store_url}
                                             amazon_domain={state.amazon_domain}
                                             onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
+                                            onLoading={(e) => setLoading(e)}
                                         />
                                     </div>
                                 </div>

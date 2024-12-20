@@ -2,8 +2,9 @@ mod modules;
 use std::process::Command;
 
 use modules::{
-    page_sustain_screenshot, take_screenshot_v2, task_amazon_images_diff, task_amazon_images_diff_v2, task_amazon_product_fetch_html, task_create_folder, task_download_imgs, task_find_amazon_sku, MY_BROWSER,
-    shopify_mod
+    page_sustain_screenshot, shopify_mod, take_screenshot_v2, task_amazon_images_diff,
+    task_amazon_images_diff_v2, task_amazon_product_fetch_html, task_create_folder,
+    task_download_imgs, task_find_amazon_sku, MY_BROWSER,
 };
 use std::time::Duration;
 use tauri::{async_runtime::spawn, Manager};
@@ -13,6 +14,8 @@ use tokio::{runtime::Runtime, task::spawn_blocking};
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_persisted_scope::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
@@ -57,7 +60,6 @@ pub fn run() {
             task_amazon_images_diff_v2,
             task_download_imgs,
             page_sustain_screenshot,
-
             shopify_mod::task_shopify_store_login,
             shopify_mod::task_shopify_store_login_status,
             shopify_mod::task_shopify_store_product_open,
