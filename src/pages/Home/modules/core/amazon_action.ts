@@ -352,6 +352,13 @@ export class AmazonAction {
                             // 不执行
                         }
                         // 识别行
+                        else if (
+                            item.classList.contains('apm-hovermodule-slides')
+                        ) {
+                            const row: IDetailContentData[] = [];
+                            await each([...item.children,], row);
+                            row.length && pushRow(row, arr);
+                        }
                         else if (item.classList.contains('apm-floatleft') && item.classList.contains('apm-wrap')) {
                             const row: IDetailContentData[] = [];
                             item.querySelector('.apm-leftimage')
@@ -377,10 +384,14 @@ export class AmazonAction {
 
                             row.length && pushRow(row, arr);
                         }
+                        else if (item.classList.contains('apm-hovermodule')) {
+                            const row: IDetailContentData[] = [];
+                            await each([item.querySelector('div')!,], row);
+                            row.length && pushRow(row, arr, 'hover-toggle-block');
+                        }
                         else if (item.querySelector('.apm-fixed-width .apm-flex')) {
                             const row: IDetailContentData[] = [];
                             await each([item.querySelector('.apm-fixed-width .apm-flex')!,], row);
-
                             row.length && pushRow(row, arr, 'average-width');
                         }
                         // 识别列
@@ -390,6 +401,7 @@ export class AmazonAction {
                             item.classList.contains('apm-sidemodule-textright') ||
                             item.classList.contains('apm-flex-item-third-width') ||
                             item.classList.contains('apm-flex-item-fourth-width') ||
+                            item.classList.contains('apm-hovermodule-slides-inner') ||
                             item.classList.contains('apm-rightthirdcol')
                         ) {
                             const columns: IDetailContentData[] = [];
