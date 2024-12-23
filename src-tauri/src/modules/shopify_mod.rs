@@ -8,8 +8,8 @@ use headless_chrome::{
 use serde_json::json;
 use tauri::{command, AppHandle, Manager, State};
 use tauri_plugin_clipboard_manager::ClipboardExt;
-use tokio::task::spawn_blocking;
 use tauri_plugin_store::{Store, StoreExt};
+use tokio::task::spawn_blocking;
 
 use super::{
     common_mod::{create_folder, start_browser},
@@ -26,8 +26,14 @@ pub async fn task_shopify_store_login(app: AppHandle, url: String) -> Result<Str
         let tab = browser.new_tab().unwrap();
         let t_id = tab.get_target_id();
 
-        let koa_val = store.get("koa_val").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
-        let koa_sig_val = store.get("koa_sig_val").and_then(|v| v.as_str().map(String::from)).unwrap_or_default();
+        let koa_val = store
+            .get("koa_val")
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or_default();
+        let koa_sig_val = store
+            .get("koa_sig_val")
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or_default();
 
         let _ = tab
             .set_cookies(vec![
@@ -95,7 +101,7 @@ pub async fn task_shopify_store_login_status(
             .unwrap();
         let mut cookies = cookies_warp.iter();
         let koa_sig = cookies.find(|ii| ii.name == "koa.sid.sig");
-        let koa = cookies.find(|ii| ii.name == "koa.sid" );
+        let koa = cookies.find(|ii| ii.name == "koa.sid");
 
         // println!("Log::::cookies::::{:?}", koa);
         // println!("Log::::cookies::::{:?}", koa_sig);
@@ -105,7 +111,7 @@ pub async fn task_shopify_store_login_status(
                 store.set("koa_val", json!(koa_val.value));
                 store.set("koa_sig_val", json!(koa_sig_val.value));
                 true
-            },
+            }
             _ => false,
         };
         // let flag = cookies.find(|ii| match ii.name.find("koa.sid") {

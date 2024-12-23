@@ -2,7 +2,7 @@ import { get_real_dom_text, handle_number, LogOrErrorSet } from '@/utils';
 import { core } from '@tauri-apps/api';
 import { stringify } from 'qs';
 import { alphabetical, parallel, retry, sleep } from 'radash';
-import { TThenData, IAmazonData, IHtmlParseData, IDetailContentRoot, IDetailContentData, TParseData, TParseType } from './index.type';
+import { TThenData, IAmazonData, IHtmlParseData, IDetailContentRoot, IDetailContentData, TParseData, TParseType } from '../types/index.type';
 
 export class AmazonAction {
     // https://www.amazon.com/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5

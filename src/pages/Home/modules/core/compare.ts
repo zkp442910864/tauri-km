@@ -1,5 +1,5 @@
 import { alphabetical, crush, omit } from 'radash';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseTypeMsg, TThenData } from './index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, TParseTypeMsg, TThenData } from '../types/index.type';
 import { LogOrErrorSet } from '@/utils';
 import { image } from '@tauri-apps/api';
 import { invoke } from '@tauri-apps/api/core';

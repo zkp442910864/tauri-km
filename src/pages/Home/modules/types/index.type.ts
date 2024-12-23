@@ -3,6 +3,7 @@ type TThenData = {sku_data: IAmazonData[], sku_map: Record<string, IAmazonData>}
 type TParseType =
     'shopify_product_id' |
     'shopify_sku_id' |
+    'shopify_inventory' |
 
     'amazon_product_sku' |
     'amazon_address_url' |

@@ -2,7 +2,7 @@ import { Button, Dropdown, List, message, Popover, Tag } from 'antd';
 import classNames from 'classnames';
 import { FC, useEffect, useRef } from 'react';
 import { CompareData } from '../modules/core/compare';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from '../modules/core/index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from '../modules/types/index.type';
 import { open } from '@tauri-apps/plugin-shell';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useDebounceEffect, useStateExtend } from '@/hooks';

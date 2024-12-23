@@ -1,5 +1,5 @@
 import { message, Modal } from 'antd';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from './index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from '../types/index.type';
 import { CompareData } from './compare';
 import { invoke } from '@tauri-apps/api/core';
 import { LogOrErrorSet } from '@/utils';

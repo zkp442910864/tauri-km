@@ -9,6 +9,8 @@ use headless_chrome::protocol::cdp::Page;
 use log_mod::{push_web_log, WebLog};
 use other_model::Response;
 use tauri::command;
+use tauri::AppHandle;
+use tauri::Manager;
 use tokio::task;
 
 pub use amazon_mod::task_amazon_images_diff;
@@ -23,7 +25,7 @@ pub use common_mod::MY_BROWSER;
 
 /** 页面截图 */
 #[command]
-pub async fn take_screenshot_v2(url: String) -> Result<String, String> {
+pub async fn take_screenshot_v2(app: AppHandle, url: String) -> Result<String, String> {
     let result = task::spawn_blocking(move || -> Result<String, String> {
         push_web_log(WebLog::new_title("截图"));
 
@@ -80,4 +82,11 @@ pub async fn take_test_check(url: String) {
     //     click_point(&tab, "form button");
     // })
     // .await;
+}
+
+#[command]
+pub async fn custom_test(app: AppHandle) -> String {
+    let val = app.path().app_local_data_dir();
+
+    val.unwrap().to_string_lossy().to_string()
 }

@@ -7,6 +7,7 @@
 - [headless-chrome](https://github.com/rust-headless-chrome/rust-headless-chrome)
 - [tokio框架](https://rust-book.junmajinlong.com/ch100/01_understand_tokio_runtime.html)
     - 项目中用于新启一个阻塞线程
+    - 数据库位置 `用户\AppData\Roaming\com.tauri.tauri-km`
 
 - 架构
     - TAO 负责 Tauri 窗口的创建<https://v2.tauri.app/concept/architecture/#tao>

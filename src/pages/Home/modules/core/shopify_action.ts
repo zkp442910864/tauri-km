@@ -2,7 +2,7 @@ import { get_real_dom_text, handle_number, LogOrErrorSet } from '@/utils';
 import { fetch } from '@tauri-apps/plugin-http';
 import { stringify } from 'qs';
 import { parallel, retry } from 'radash';
-import { IHtmlParseData, IOtherData, IShopifyData, IShopifyProductData, TParseData, TParseType, TThenData } from './index.type';
+import { IHtmlParseData, IOtherData, IShopifyData, IShopifyProductData, TParseData, TParseType, TThenData } from '../types/index.type';
 
 export class ShopifyAction {
 
@@ -168,6 +168,7 @@ export class ShopifyAction {
 
         new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));
         new_data.push(new IHtmlParseData('shopify_sku_id', data.shopify_sku_id));
+        new_data.push(new IHtmlParseData('shopify_inventory', data.inventory));
 
         return [
             new_data,

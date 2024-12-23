@@ -2,7 +2,7 @@
 import { useCacheValue, useStateExtend } from '@/hooks';
 import { LogOrErrorSet } from '@/utils';
 import { Button, Input, Splitter } from 'antd';
-import { useRef } from 'react';
+import { Suspense, useRef } from 'react';
 import { ContentBox } from './components/ContentBox';
 import { DataQuery } from './components/DataQuery';
 import { RenderCode } from './components/RenderCode';
@@ -12,10 +12,15 @@ import { AmazonAction } from './modules/core/amazon_action';
 import { Compare, CompareData } from './modules/core/compare';
 import { ShopifyAction } from './modules/core/shopify_action';
 import { invoke } from '@tauri-apps/api/core';
+import Database from '@tauri-apps/plugin-sql';
+import { AwaitComponent } from '@/components/AwaitComponent';
+import { CustomDatabase } from './modules/custom-database';
 
 // console.log(resourceDir());
 // desktopDir
 // resourceDir
+
+const database_init_promise = CustomDatabase.init();
 
 const Home = () => {
 
@@ -74,20 +79,20 @@ const Home = () => {
         // {
         //     await file_temp.create('qweee/sswws.txt', new TextEncoder().encode('Hello world'));
         // }
-        {
-            const res = await invoke<string>('task_amazon_images_diff_v2', {
-                sku: 'xxx',
-                folderType: 'banner',
-                shopifyUrls: [
-                    'https://chonchow.com/cdn/shop/files/download_23_dccede46-1bf3-4d8c-9946-0a656bea4567.jpg?v=1731987839',
-                    'https://chonchow.com/cdn/shop/files/download_24_bbf43735-a783-48bc-9cc1-2d2fa9ed0f9a.jpg?v=1731987839&width=1946',
-                ],
-                amazonUrls: [
-                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
-                    'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
-                ],
-            });
-        }
+        // {
+        //     const res = await invoke<string>('task_amazon_images_diff_v2', {
+        //         sku: 'xxx',
+        //         folderType: 'banner',
+        //         shopifyUrls: [
+        //             'https://chonchow.com/cdn/shop/files/download_23_dccede46-1bf3-4d8c-9946-0a656bea4567.jpg?v=1731987839',
+        //             'https://chonchow.com/cdn/shop/files/download_24_bbf43735-a783-48bc-9cc1-2d2fa9ed0f9a.jpg?v=1731987839&width=1946',
+        //         ],
+        //         amazonUrls: [
+        //             'https://m.media-amazon.com/images/S/aplus-media-library-service-media/7f3eee66-a2eb-43cb-93df-86f9c3350fb6.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+        //             'https://m.media-amazon.com/images/S/aplus-media-library-service-media/3f81d281-185d-4b9f-98b3-86482da72600.__CR0,0,970,600_PT0_SX970_V1___.jpg',
+        //         ],
+        //     });
+        // }
         // {
         //     const res = await invoke<string>('task_download_imgs', {
         //         sku: 'xxx',
@@ -114,6 +119,29 @@ const Home = () => {
         // {
         //     await invoke('take_test_check', { url: 'file:///C:/Users/zhouk/Desktop/Amazon.com.html', });
         // }
+        {
+            // await invoke('custom_test');
+            const db = await Database.load('sqlite:test.db');
+            // await db.execute('INSERT INTO ...');
+            await db.execute(`
+                CREATE TABLE IF NOT EXISTS product (
+                    sku                TEXT    PRIMARY KEY ON CONFLICT ROLLBACK
+                                            NOT NULL,
+                    title              TEXT,
+                    price              NUMERIC,
+                    inventory          NUMERIC,
+                    model              TEXT,
+                    shopify_product_id TEXT,
+                    status             NUMERIC NOT NULL
+                                            DEFAULT (1),
+                    create_date        TEXT,
+                    update_date        TEXT
+                );
+            `);
+            await db.close();
+            console.log(db);
+
+        }
     };
 
 
@@ -137,6 +165,17 @@ const Home = () => {
         void update({});
     };
 
+    const shopify_data_insert_sql = () => {
+        setLoading(true);
+        LogOrErrorSet.get_instance().capture_error(async () => {
+            const inline_assign_skus = assign_skus ? assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => ii) : [];
+            const shopify_data = await new ShopifyAction(state.shopify_domain, inline_assign_skus);
+            await CustomDatabase.get_instance().product_push_data(shopify_data.sku_data);
+            setLoading(false);
+
+        });
+    };
+
     const action = () => {
         reset();
         setLoading(true);
@@ -158,63 +197,66 @@ const Home = () => {
     };
 
     return (
-        <div className="p-t-20">
-            <div id="hidden-text" className="un-w-0 un-h-0 un-opacity0"></div>
-            <div className="flex un-gap-8px p-x-20">
-                <Input
-                    name="sku"
-                    className=" un-w-300px"
-                    autoComplete="on"
-                    addonBefore="指定SKU"
-                    placeholder="逗号或空格间隔"
-                    value={assign_skus}
-                    onChange={(e) => {
-                        void set_assign_skus(e.target.value);
-                    }}
-                />
-                <Button type="primary" onClick={() => void action()}>运行</Button>
-                {/* <Button type="primary" onClick={() => void test()}>test</Button> */}
-                {/* <Button type="primary" onClick={() => void shopify_fn()}>1: shopify</Button> */}
-                {/* <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button> */}
-            </div>
-            <ContentBox>
-                <Splitter
-                    layout="vertical"
-                    className="un-w-100% un-h-100%"
-                    style={{ boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)', }}
-                >
-                    <Splitter.Panel>
-                        <Splitter>
-                            <Splitter.Panel>
-                                <RenderLogs className="p-10" loading={state.loading}/>
-                            </Splitter.Panel>
+        <AwaitComponent promise={database_init_promise}>
+            <div className="p-t-20">
+                <div id="hidden-text" className="un-w-0 un-h-0 un-opacity0"></div>
+                <div className="flex un-gap-8px p-x-20">
+                    <Input
+                        name="sku"
+                        className=" un-w-300px"
+                        autoComplete="on"
+                        addonBefore="指定SKU"
+                        placeholder="逗号或空格间隔"
+                        value={assign_skus}
+                        onChange={(e) => {
+                            void set_assign_skus(e.target.value);
+                        }}
+                    />
+                    <Button type="primary" onClick={() => void action()}>运行</Button>
+                    <Button type="primary" onClick={() => void shopify_data_insert_sql()}>入库</Button>
+                    <Button type="primary" onClick={() => void test()}>test</Button>
+                    {/* <Button type="primary" onClick={() => void shopify_fn()}>1: shopify</Button> */}
+                    {/* <Button type="primary" onClick={() => void amazon_fn()}>2: amazon</Button> */}
+                </div>
+                <ContentBox>
+                    <Splitter
+                        layout="vertical"
+                        className="un-w-100% un-h-100%"
+                        style={{ boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)', }}
+                    >
+                        <Splitter.Panel>
+                            <Splitter>
+                                <Splitter.Panel>
+                                    <RenderLogs className="p-10" loading={state.loading}/>
+                                </Splitter.Panel>
 
-                            <Splitter.Panel>
-                                <div className="flex f-col">
-                                    <DataQuery
-                                        className="un-sticky un-top-0 bg-f un-z2 p-10"
-                                        onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
-                                    />
-                                    <div className="p-10 p-t-0">
-                                        <ResultData
-                                            result={state.result}
-                                            shopify_domain={state.shopify_domain}
-                                            shopify_store_url={state.shopify_store_url}
-                                            amazon_domain={state.amazon_domain}
+                                <Splitter.Panel>
+                                    <div className="flex f-col">
+                                        <DataQuery
+                                            className="un-sticky un-top-0 bg-f un-z2 p-10"
                                             onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
-                                            onLoading={(e) => setLoading(e)}
                                         />
+                                        <div className="p-10 p-t-0">
+                                            <ResultData
+                                                result={state.result}
+                                                shopify_domain={state.shopify_domain}
+                                                shopify_store_url={state.shopify_store_url}
+                                                amazon_domain={state.amazon_domain}
+                                                onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
+                                                onLoading={(e) => setLoading(e)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </Splitter.Panel>
-                        </Splitter>
-                    </Splitter.Panel>
-                    <Splitter.Panel>
-                        <RenderCode content={state.render_code} type={state.render_type} />
-                    </Splitter.Panel>
-                </Splitter>
-            </ContentBox>
-        </div>
+                                </Splitter.Panel>
+                            </Splitter>
+                        </Splitter.Panel>
+                        <Splitter.Panel>
+                            <RenderCode content={state.render_code} type={state.render_type} />
+                        </Splitter.Panel>
+                    </Splitter>
+                </ContentBox>
+            </div>
+        </AwaitComponent>
     );
 };
 
