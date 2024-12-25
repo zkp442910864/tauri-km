@@ -8,7 +8,10 @@ use common_mod::{click_point, start_browser};
 use headless_chrome::protocol::cdp::Page;
 use log_mod::{push_web_log, WebLog};
 use other_model::Response;
+use tauri::async_runtime::spawn_blocking;
 use tauri::command;
+use tauri::http::HeaderMap;
+use tauri::http::HeaderValue;
 use tauri::AppHandle;
 use tauri::Manager;
 use tokio::task;
@@ -89,4 +92,43 @@ pub async fn custom_test(app: AppHandle) -> String {
     let val = app.path().app_local_data_dir();
 
     val.unwrap().to_string_lossy().to_string()
+}
+
+#[command]
+pub async fn take_graphql_client(
+    json: String,
+    access_token: String,
+    api_version: String,
+    store_domain: String,
+) -> Result<String, String> {
+    let result = spawn_blocking(move || {
+        let client = reqwest::blocking::Client::new();
+        let mut headers = HeaderMap::new();
+        headers.insert("Content-Type", HeaderValue::from_static("application/json"));
+        headers.insert(
+            "X-Shopify-Access-Token",
+            HeaderValue::from_str(&access_token).unwrap(),
+        );
+
+        let res = client
+            .post(format!(
+                "{}/admin/api/{}/graphql.json",
+                store_domain, api_version
+            ))
+            .headers(headers)
+            .body(json)
+            .send()
+            .unwrap();
+
+        res.json::<serde_json::Value>().unwrap()
+    })
+    .await;
+
+    match result {
+        Ok(data) => Response::new_result(1, Some(data), None),
+        Err(e) => {
+            let msg = format!("异步任务失败: {}", e);
+            Response::<String>::new_result(0, None, Some(msg))
+        }
+    }
 }

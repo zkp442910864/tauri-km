@@ -4,6 +4,7 @@ type TParseType =
     'shopify_product_id' |
     'shopify_sku_id' |
     'shopify_inventory' |
+    'shopify_inventory_detail' |
 
     'amazon_product_sku' |
     'amazon_address_url' |
@@ -26,9 +27,9 @@ type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number 
 
 // ~~~~~~~~~~~~~~~~~~~~~~
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface IShopifyData extends IAmazonData {
     // sku: string;
+    variant_id?: string;
     // detail?: TParseData[];
     // detail_map?: Record<TParseType, TParseData>;
 }
@@ -99,6 +100,9 @@ interface IOtherData {
     old_price?: number;
     html?: string;
     text?: string;
+    inventory_total?: number | string;
+    inventory_us?: number | string;
+    inventory_ca?: number | string;
 }
 
 export type {

@@ -6,6 +6,8 @@ export class LogOrErrorSet {
     logs: string[] = [];
     logCallback: Array<() => void> = [];
 
+    private constructor() {}
+
     static get_instance() {
         if (!this.instance) {
             this.instance = new LogOrErrorSet();
@@ -65,7 +67,7 @@ export class LogOrErrorSet {
         this.logCallback.forEach(ii => ii());
     }
 
-    capture_error<T>(fn: () => T) {
+    async capture_error<T>(fn: () => T, error_flag?: unknown) {
         const data = {
             success: false,
             data: null as unknown,
@@ -73,14 +75,21 @@ export class LogOrErrorSet {
         };
         try {
             data.success = true;
-            data.data = fn();
+            data.data = await fn();
         }
         catch (error) {
-            data.success = false;
-            data.msg = this.save_error(error);
-            data.data = error;
+            if (error instanceof Error && error.message === '跳出') {
+                //
+            }
+            else {
+                console.error({ error, error_flag, });
+                data.success = false;
+                data.msg = this.save_error({ error, error_flag, });
+                data.data = error;
+                this.push_log(`capture_error捕获错误: ${data.msg}`, { error: true, is_fill_row: true, });
+            }
         }
-        return data as {success: true, data: T, msg?: string} | {success: false, data: unknown, msg?: string};
+        return data.data as T;
     }
 
     on_log_change(fn: () => void) {
@@ -95,4 +104,10 @@ export class LogOrErrorSet {
         this.logCallback.forEach(ii => ii());
     }
 }
+
+export const log_error = new Proxy({} as LogOrErrorSet, {
+    get: (target, property, receiver) => {
+        return LogOrErrorSet.instance[property as keyof LogOrErrorSet];
+    },
+});
 

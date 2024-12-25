@@ -218,7 +218,7 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
                                             if (item.type === 'add') {
                                                 return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动添加" onClick={(e) => auto_add_item(e, item)}></div>;
                                             }
-                                            return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动添加" onClick={(e) => auto_add_item(e, item)}></div>;
+                                            // return <div className="i-icon-park-twotone:update-rotation un-text-20px" title="自动添加" onClick={(e) => auto_add_item(e, item)}></div>;
                                             return '';
                                         })()}
                                         <div className="i-arcticons:shopify un-text-20px" title="打开链接" onClick={(e) => link_click(e, 'shopify_background', item)}></div>

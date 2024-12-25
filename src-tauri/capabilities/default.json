@@ -46,6 +46,7 @@
     "sql:allow-execute",
     "sql:allow-load",
     "sql:allow-select",
-    "sql:allow-close"
+    "sql:allow-close",
+    "dialog:default"
   ]
 }

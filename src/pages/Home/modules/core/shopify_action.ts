@@ -3,6 +3,7 @@ import { fetch } from '@tauri-apps/plugin-http';
 import { stringify } from 'qs';
 import { parallel, retry } from 'radash';
 import { IHtmlParseData, IOtherData, IShopifyData, IShopifyProductData, TParseData, TParseType, TThenData } from '../types/index.type';
+import { shopify_admin_api } from '../shopify_admin_api';
 
 export class ShopifyAction {
 
@@ -29,7 +30,8 @@ export class ShopifyAction {
             this.handle_assign_skus();
         }
         else {
-            await this.fetch_all_sku(`${this.domain}${this.collection_url}`);
+            // await this.fetch_all_sku(`${this.domain}${this.collection_url}`);
+            await this.fetch_all_sku_v2();
         }
         await this.fetch_sku_detail(`${this.domain}${this.product_url}`);
 
@@ -37,10 +39,10 @@ export class ShopifyAction {
         LogOrErrorSet.get_instance().push_log(`shopify数据处理结束, 总条数${this.sku_data.length} \n ${LogOrErrorSet.get_instance().save_data(this.sku_data)}`, { title: true, });
     }
 
-    push_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
+    push_sku(sku: string, variant_id?: string, sku_data = this.sku_data, sku_map = this.sku_map) {
         const key = sku.toLocaleUpperCase();
         if (!sku_map[key]) {
-            const new_sku_item = { sku: key, };
+            const new_sku_item = { sku: key, variant_id, };
             sku_map[key] = new_sku_item;
             sku_data.push(new_sku_item);
             return true;
@@ -97,6 +99,19 @@ export class ShopifyAction {
 
     }
 
+    async fetch_all_sku_v2() {
+        LogOrErrorSet.get_instance().push_log('shopify获取sku', { title: true, is_fill_row: true, });
+
+        await LogOrErrorSet.get_instance().capture_error(async () => {
+            const { data, } = await shopify_admin_api.get_all_product();
+            data.forEach((item) => {
+                this.push_sku(item.first_variant_sku, item.first_variant_id);
+            });
+        });
+
+        LogOrErrorSet.get_instance().push_log('shopify获取sku完成', { title: true, });
+    }
+
     /** 获取每个sku下的详情 */
     async fetch_sku_detail(url: string) {
         if (!this.sku_data.length) return;
@@ -140,20 +155,14 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('get_title', data.title));
         new_data.push(new IHtmlParseData('get_banner_imgs', data.banner_imgs));
 
-        const price_data = LogOrErrorSet.get_instance().capture_error(() => {
+        void LogOrErrorSet.get_instance().capture_error(() => {
             const price = handle_number(data.price.match(/Regular price\s+\$([\d.]+)\s+USD/)?.[1] ?? -1);
             const old_price = handle_number(data.price.match(/\$([\d.]+)\s+USD\s+Sale price\s+/)?.[1] ?? -1);
 
             if (price === -1) LogOrErrorSet.get_instance().push_log(`价格解析失败: ${data.sku}`, { error: true, is_fill_row: true, });
 
-            return { price, old_price, };
-        });
-
-        new_data.push(
-            price_data.success
-                ? new IHtmlParseData('get_price', price_data.data)
-                : new IHtmlParseData('get_price', null, price_data.msg ?? `解析失败: ${data.sku}`, price_data.data)
-        );
+            new_data.push(new IHtmlParseData('get_price', { price, old_price, }));
+        }, data);
 
         new_data.push(new IHtmlParseData('get_sku_model', data.sku_model || ''));
         new_data.push(new IHtmlParseData('get_relevance_tag', data.relevance_tag || ''));
@@ -169,6 +178,8 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));
         new_data.push(new IHtmlParseData('shopify_sku_id', data.shopify_sku_id));
         new_data.push(new IHtmlParseData('shopify_inventory', data.inventory));
+        // 在入库的时候,会去完善
+        new_data.push(new IHtmlParseData('shopify_inventory_detail', {}));
 
         return [
             new_data,

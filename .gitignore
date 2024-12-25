@@ -13,6 +13,7 @@ dist
 dist-ssr
 build
 *.local
+shopify_secret_key.json
 
 # Editor directories and files
 .idea

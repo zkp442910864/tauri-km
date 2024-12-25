@@ -2,9 +2,9 @@ mod modules;
 use std::process::Command;
 
 use modules::{
-    page_sustain_screenshot, shopify_mod, take_screenshot_v2, task_amazon_images_diff,
-    task_amazon_images_diff_v2, task_amazon_product_fetch_html, task_create_folder,
-    task_download_imgs, task_find_amazon_sku, MY_BROWSER, custom_test,
+    custom_test, page_sustain_screenshot, shopify_mod, take_graphql_client, take_screenshot_v2,
+    task_amazon_images_diff, task_amazon_images_diff_v2, task_amazon_product_fetch_html,
+    task_create_folder, task_download_imgs, task_find_amazon_sku, MY_BROWSER,
 };
 use std::time::Duration;
 use tauri::{async_runtime::spawn, Manager};
@@ -14,6 +14,7 @@ use tokio::{runtime::Runtime, task::spawn_blocking};
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_persisted_scope::init())
@@ -67,6 +68,7 @@ pub fn run() {
             shopify_mod::task_shopify_store_product_update_item,
             shopify_mod::task_shopify_store_product_finish,
             custom_test,
+            take_graphql_client,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
