@@ -50,13 +50,18 @@ const Home = () => {
         shopify_store_url: 'https://admin.shopify.com/store/jvrwsa-aj',
     });
 
+    const assign_skus_to_arr = () => {
+        const new_val = assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => !!ii);
+        return new_val;
+    };
+
     const shopify_fn = async () => {
-        const data = await new ShopifyAction(state.shopify_domain, assign_skus.split(','));
+        const data = await new ShopifyAction(state.shopify_domain, assign_skus_to_arr());
         console.log(data);
     };
 
     const amazon_fn = async () => {
-        const data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus.split(','));
+        const data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
         console.log(data);
     };
 
@@ -86,8 +91,8 @@ const Home = () => {
 
         void LogOrErrorSet.get_instance().capture_error(async () => {
             const start = performance.now();
-            const shopify_data = await new ShopifyAction(state.shopify_domain, assign_skus.split(','));
-            const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus.split(','));
+            const shopify_data = await new ShopifyAction(state.shopify_domain, assign_skus_to_arr());
+            const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
 
             const data = await new Compare(amazon_data, shopify_data).start();
             // console.log(data);
@@ -111,10 +116,6 @@ const Home = () => {
                         addonBefore="指定SKU"
                         placeholder="逗号或空格间隔"
                         value={assign_skus}
-                        onBlur={() => {
-                            const new_val = assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => ii).join(',');
-                            void set_assign_skus(new_val);
-                        }}
                         onChange={(e) => {
                             void set_assign_skus(e.target.value);
                         }}
@@ -122,7 +123,7 @@ const Home = () => {
                     <Button type="primary" onClick={() => void action()}>运行</Button>
                     <OtherActionButton
                         shopify_domain={state.shopify_domain}
-                        assign_skus={assign_skus}
+                        assign_skus={assign_skus_to_arr()}
                     >
                         其他
                     </OtherActionButton>

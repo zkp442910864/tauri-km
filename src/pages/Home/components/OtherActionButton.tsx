@@ -10,7 +10,7 @@ import { confirm, log_error } from '@/utils';
 import { IOtherData } from '../modules/types/index.type';
 
 
-export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode, assign_skus: string}> = ({
+export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode, assign_skus: string[]}> = ({
     shopify_domain,
     children,
     assign_skus,
@@ -43,7 +43,7 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
                         await log_error.capture_error(async () => {
                             if (key === 'in_sql_data') {
                                 await confirm(title);
-                                const shopify_data = await new ShopifyAction(shopify_domain, assign_skus.split(','));
+                                const shopify_data = await new ShopifyAction(shopify_domain, assign_skus);
                                 for (const item of shopify_data.sku_data) {
                                     await log_error.capture_error(async () => {
                                         const data = item.detail_map!.shopify_inventory_detail.data as IOtherData;
