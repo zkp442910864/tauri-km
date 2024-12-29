@@ -113,7 +113,7 @@ export class ShopifyStoreAction {
             else {
                 let value = update_data.data || '';
                 if (type === 'get_price') {
-                    const v_id = shopify_data?.['shopify_sku_id'].data as number | null;
+                    const v_id = shopify_data?.shopify_sku_id.data as number | null;
                     value = v_id
                         ? `${v_id}&&${(update_data?.data as IOtherData).price}&&${(update_data?.data as IOtherData).old_price}`
                         : `${(update_data?.data as IOtherData).price}&&${(update_data?.data as IOtherData).old_price}`;

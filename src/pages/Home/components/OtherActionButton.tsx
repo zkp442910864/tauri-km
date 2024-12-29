@@ -4,16 +4,20 @@ import { ShopifyAction } from '../modules/core/shopify_action';
 import { useStateExtend } from '@/hooks';
 import { open } from '@tauri-apps/plugin-shell';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { Database, database } from '../modules/database';
 import { shopify_admin_api } from '../modules/shopify_admin_api';
 import { confirm, log_error } from '@/utils';
 import { IOtherData } from '../modules/types/index.type';
+import { DB_NAME, reset_database, table } from '../modules/database';
+import { AmazonAction } from '../modules/core/amazon_action';
+import { amazon_choice_fn } from './AmazonChoice';
 
 
-export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode, assign_skus: string[]}> = ({
+export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode, assign_skus: string[], amazon_domain: string, amazon_collection_urls: string[]}> = ({
     shopify_domain,
     children,
     assign_skus,
+    amazon_domain,
+    amazon_collection_urls,
 }) => {
     const [loading, setLoading,] = useStateExtend(false);
 
@@ -22,8 +26,16 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
             menu={{
                 items: [
                     {
-                        key: 'in_sql_data',
+                        key: 'shopify_in_sql_data',
                         label: 'shopify数据写入库',
+                    },
+                    {
+                        key: 'amazon_in_sql_data',
+                        label: 'amazon数据写入库',
+                    },
+                    {
+                        key: 'open_amazon_choice',
+                        label: '亚马逊精选产品',
                     },
                     {
                         key: 'open_sql_file',
@@ -41,7 +53,7 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
 
                         void setLoading(true);
                         await log_error.capture_error(async () => {
-                            if (key === 'in_sql_data') {
+                            if (key === 'shopify_in_sql_data') {
                                 await confirm(title);
                                 const shopify_data = await new ShopifyAction(shopify_domain, assign_skus);
                                 for (const item of shopify_data.sku_data) {
@@ -61,16 +73,25 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
                                         });
                                     }, item);
                                 }
-                                await database.product_push_data(shopify_data.sku_data);
+                                await table.shopify_product.push_data(shopify_data.sku_data);
+                            }
+                            else if (key === 'amazon_in_sql_data') {
+                                await confirm(title);
+                                // amazon_domain amazon_collection_urls
+                                const amazon_data = await new AmazonAction(amazon_domain, amazon_collection_urls, assign_skus);
+                                await table.amazon_product.push_data(amazon_data.sku_data);
                             }
                             else if (key === 'open_sql_file') {
                                 const base_url = await appDataDir();
-                                const url = await join(base_url, Database.DB_NAME);
+                                const url = await join(base_url, DB_NAME);
                                 await open(url);
                             }
                             else if (key === 'reset_db') {
                                 await confirm(title);
-                                await database.reset_db();
+                                await reset_database();
+                            }
+                            else if (key === 'open_amazon_choice') {
+                                await amazon_choice_fn();
                             }
                         });
                         void setLoading(false);

@@ -82,9 +82,10 @@ export class LogOrErrorSet {
                 //
             }
             else {
-                console.error({ error, error_flag, });
+                const error_data = { error, error_message: error?.toString(), error_flag, };
+                console.error(error_data);
                 data.success = false;
-                data.msg = this.save_error({ error, error_flag, });
+                data.msg = this.save_error(error_data);
                 data.data = error;
                 this.push_log(`capture_error捕获错误: ${data.msg}`, { error: true, is_fill_row: true, });
             }

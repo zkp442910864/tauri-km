@@ -49,6 +49,9 @@ importers:
       dayjs:
         specifier: ^1.11.13
         version: 1.11.13
+      layui:
+        specifier: 2.9.21-rc.1
+        version: 2.9.21-rc.1
       qs:
         specifier: ^6.13.1
         version: 6.13.1
@@ -86,6 +89,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2.1.0
         version: 2.1.0
+      '@types/layui-src':
+        specifier: ^2.6.4
+        version: 2.6.4
       '@types/node':
         specifier: ^22.10.1
         version: 22.10.1
@@ -954,6 +960,9 @@ packages:
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
 
+  '@types/layui-src@2.6.4':
+    resolution: {integrity: sha512-3qXPlsMy49FaX0/Hu0BvJFbeZZvKnXDQQQkY8sgk/NZSgd+aeC/yfLVzhYsfozBFIXzzynh1SFJkSVcmEnu+WQ==}
+
   '@types/mdast@4.0.4':
     resolution: {integrity: sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA==}
 
@@ -1611,6 +1620,9 @@ packages:
 
   kolorist@1.8.0:
     resolution: {integrity: sha512-Y+60/zizpJ3HRH8DCss+q95yr6145JXZo46OTpFvDZWLfRCE4qChOyk1b26nMaNpfHHgxagk9dXT5OP0Tfe+dQ==}
+
+  layui@2.9.21-rc.1:
+    resolution: {integrity: sha512-p20lmBNcsMIWp1xP7dN3MTP+1pNRZDdxSCSEoJm/pbtbxuQeMPb+2e234TB60jYcacFWyFOHaxggtOHF7jJgWA==}
 
   levn@0.4.1:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
@@ -3066,6 +3078,8 @@ snapshots:
 
   '@types/json-schema@7.0.15': {}
 
+  '@types/layui-src@2.6.4': {}
+
   '@types/mdast@4.0.4':
     dependencies:
       '@types/unist': 3.0.3
@@ -3939,6 +3953,8 @@ snapshots:
       json-buffer: 3.0.1
 
   kolorist@1.8.0: {}
+
+  layui@2.9.21-rc.1: {}
 
   levn@0.4.1:
     dependencies:

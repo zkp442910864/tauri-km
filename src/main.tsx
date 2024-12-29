@@ -7,10 +7,11 @@ import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
+import 'layui';
+import 'layui/dist/css/layui.css';
 
 import '@unocss/reset/eric-meyer.css';
 import 'virtual:uno.css';
-
 
 void (() => {
     const [, dType,] = getDevice();

@@ -12,18 +12,15 @@ import { AmazonAction } from './modules/core/amazon_action';
 import { Compare, CompareData } from './modules/core/compare';
 import { ShopifyAction } from './modules/core/shopify_action';
 import { AwaitComponent } from '@/components/AwaitComponent';
-import { Database } from './modules/database';
 import { init_shopify_admin_api } from './modules/shopify_admin_api';
 import { store_init } from './modules/store';
 import { TestButton } from './components/TestButton';
 import { OtherActionButton } from './components/OtherActionButton';
-// console.log(resourceDir());
-// desktopDir
-// resourceDir
+import { init_database } from './modules/database';
 
 const init_promise = (async () => {
     await Promise.all([
-        Database.init(),
+        init_database(),
         store_init(),
     ]);
     await init_shopify_admin_api();
@@ -122,6 +119,8 @@ const Home = () => {
                     />
                     <Button type="primary" onClick={() => void action()}>运行</Button>
                     <OtherActionButton
+                        amazon_domain={state.amazon_domain}
+                        amazon_collection_urls={state.amazon_collection_urls}
                         shopify_domain={state.shopify_domain}
                         assign_skus={assign_skus_to_arr()}
                     >

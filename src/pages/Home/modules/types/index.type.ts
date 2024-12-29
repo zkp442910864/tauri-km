@@ -10,6 +10,8 @@ type TParseType =
     'amazon_address_url' |
     'amazon_product_brand' |
     'amazon_product_collections' |
+    'amazon_choice' |
+    'amazon_first_image' |
 
     'get_title' |
     'get_desc_text' |
@@ -23,7 +25,7 @@ type TParseType =
     'get_banner_imgs' |
     'get_content_imgs';
 type TParseTypeMsg = TParseType | 'get_price.no_price' | 'get_content_json.error';
-type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number | undefined>;
+type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number | undefined | boolean>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~
 

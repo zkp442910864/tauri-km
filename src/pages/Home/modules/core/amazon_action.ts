@@ -118,6 +118,11 @@ export class AmazonAction {
             }
         };
 
+        const amazon_choice = (dom: Document) => {
+            const text = (dom.querySelector<HTMLDivElement>('#acBadge_feature_div')?.innerText || '').toLocaleLowerCase();
+            return new IHtmlParseData('amazon_choice', text.indexOf('choice') > -1);
+        };
+
         const get_banner_imgs = (dom: Document) => {
             try {
                 const js_str = dom.querySelector('#imageBlock+script')?.textContent ?? '';
@@ -157,13 +162,13 @@ export class AmazonAction {
             return new IHtmlParseData('get_price', price === -1 ? null : { price, old_price, });
         };
 
-        const get_sku_model = (dom: Document, sku: string) => {
+        const get_sku_model = (dom: Document, sku: string, detail_model: string) => {
             try {
                 const data = JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
-                return new IHtmlParseData('get_sku_model', data[sku].join().replaceAll(',', ' '));
+                return new IHtmlParseData('get_sku_model', `${detail_model}&&&&${data[sku].join().replaceAll(',', ' ')}`);
             }
             catch (error) {
-                return new IHtmlParseData('get_sku_model', 'no model');
+                return new IHtmlParseData('get_sku_model', `${detail_model}&&&&no model`);
                 // return new IHtmlParseData('get_sku_model', null, '解析失败', error);
             }
         };
@@ -200,6 +205,7 @@ export class AmazonAction {
         };
 
         const get_detail_v2 = (dom: Document) => {
+            let detail_model = '';
             try {
                 const data: Array<{title: string, value: string}> = [];
                 const cacheSet = new Set<string>();
@@ -214,6 +220,9 @@ export class AmazonAction {
                     if (!cacheSet.has(title.toLocaleLowerCase())) {
                         data.push({ title, value: text, });
                         cacheSet.add(title.toLocaleLowerCase());
+                        if (title.toLocaleLowerCase() === 'Item model number'.toLocaleLowerCase()) {
+                            detail_model = text;
+                        }
                     }
                 };
 
@@ -244,10 +253,10 @@ export class AmazonAction {
                     push_val(title, text);
                 });
 
-                return new IHtmlParseData('get_detail', data.map(ii => `${ii.title}:${ii.value}`).join('\n'));
+                return [detail_model, new IHtmlParseData('get_detail', data.map(ii => `${ii.title}:${ii.value}`).join('\n')),] as [string, IHtmlParseData<string>];
             }
             catch (error) {
-                return new IHtmlParseData('get_detail', null, '解析失败', error);
+                return [detail_model, new IHtmlParseData('get_detail', null, '解析失败', error),] as [string, IHtmlParseData<null>];
             }
         };
 
@@ -512,25 +521,29 @@ export class AmazonAction {
                     // 数据抓取
                     {
                         const parse_data: Exclude<IAmazonData['detail'], undefined> = [];
+                        const [detail_model, detail_data,] = get_detail_v2(dom);
 
                         // 独立属性
                         parse_data.push(new IHtmlParseData('amazon_address_url', fullUrl));
                         parse_data.push(new IHtmlParseData('amazon_product_sku', sku));
                         parse_data.push(new IHtmlParseData('amazon_product_brand', 'CHONCHOW'));
                         parse_data.push(new IHtmlParseData('amazon_product_collections', ['Other',].join(',')));
+                        parse_data.push(amazon_choice(dom));
                         // parse_data.push(new IHtmlParseData('amazon_product_brand', sku));
 
                         // 标题
                         parse_data.push(get_title(dom));
                         // 商品轮播图
-                        parse_data.push(get_banner_imgs(dom));
+                        const img_data = get_banner_imgs(dom);
+                        parse_data.push(img_data);
+                        parse_data.push(new IHtmlParseData('amazon_first_image', img_data.data[0] || ''));
                         // 商品价格
                         parse_data.push(get_price(dom));
                         // 商品型号
-                        parse_data.push(get_sku_model(dom, sku));
+                        parse_data.push(get_sku_model(dom, sku, detail_model));
                         // 商品详情
                         // parse_data.push(get_detail(dom));
-                        parse_data.push(get_detail_v2(dom));
+                        parse_data.push(detail_data);
                         // 商品描述文案
                         parse_data.push(await get_desc_text(dom));
                         // 商品功能与规格
