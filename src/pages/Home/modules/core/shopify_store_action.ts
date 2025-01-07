@@ -3,6 +3,7 @@ import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg 
 import { CompareData } from './compare';
 import { invoke } from '@tauri-apps/api/core';
 import { LogOrErrorSet } from '@/utils';
+import { table } from '../database';
 
 export class ShopifyStoreAction {
     static is_login_status = false;
@@ -34,6 +35,7 @@ export class ShopifyStoreAction {
             const tab_id = await this.open_product_page(data);
             await this.each_add_data(data, tab_id);
             await this.save_data(data, tab_id);
+            // await table.shopify_product.push_data([]);
         }
         catch (error) {
             console.error(error);
@@ -168,7 +170,7 @@ export class ShopifyStoreAction {
                 value = (item.data as IOtherData).html!;
             }
 
-            if (!value) continue;
+            if (!value || ['amazon_first_image',].includes(item.type)) continue;
             const res = await invoke<string>('task_shopify_store_product_update_item', {
                 url: `${this.store_url}/products/new`,
                 inputType: `${item.type}.add`,

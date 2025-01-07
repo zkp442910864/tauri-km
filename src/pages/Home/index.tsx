@@ -13,17 +13,44 @@ import { Compare, CompareData } from './modules/core/compare';
 import { ShopifyAction } from './modules/core/shopify_action';
 import { AwaitComponent } from '@/components/AwaitComponent';
 import { init_shopify_admin_api } from './modules/shopify_admin_api';
-import { store_init } from './modules/store';
+import { store, store_init } from './modules/store';
 import { TestButton } from './components/TestButton';
 import { OtherActionButton } from './components/OtherActionButton';
-import { init_database } from './modules/database';
+import { init_database, table } from './modules/database';
+import { open } from '@tauri-apps/plugin-dialog';
+import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
+import { IConfig } from './modules/types/index.type';
+import { GLOBAL_DATA } from './modules/global_data';
 
 const init_promise = (async () => {
-    await Promise.all([
-        init_database(),
-        store_init(),
-    ]);
-    await init_shopify_admin_api();
+    const confirm_config_data = async () => {
+        let record_data = await store.get_val<IConfig[]>('configs');
+        if (record_data) {
+            //
+        }
+        else {
+            const file_path = await open({
+                title: '配置文件',
+                multiple: false,
+                directory: false,
+                filters: [
+                    { name: 'filter', extensions: ['json',], },
+                ],
+            });
+            if (!file_path) return [];
+
+            const json = await readTextFile(file_path, { baseDir: BaseDirectory.AppCache, });
+            record_data = JSON.parse(json) as IConfig[];
+            await store.set_val('configs', record_data);
+        }
+
+        GLOBAL_DATA.CURRENT_STORE = record_data.find(ii => ii.name === 'chonchow')!;
+    };
+
+    await store_init();
+    await confirm_config_data();
+    await init_database();
+    init_shopify_admin_api();
 })();
 
 const Home = () => {
@@ -36,15 +63,6 @@ const Home = () => {
         render_code: '',
         render_type: 'json',
         loading: false,
-        shopify_domain: 'https://chonchow.com',
-        amazon_domain: 'https://www.amazon.com',
-        amazon_collection_urls: [
-            '/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5',
-            '/stores/page/6FF02BCB-060B-4B12-A07F-6C60EFC143F3',
-            '/stores/page/BBF5BC86-5FA2-4520-A0DC-750B13670037',
-            '/stores/page/814A8742-74D4-4AD6-93EA-AE0CE90D80F9/search?terms=chonchow',
-        ],
-        shopify_store_url: 'https://admin.shopify.com/store/jvrwsa-aj',
     });
 
     const assign_skus_to_arr = () => {
@@ -53,12 +71,12 @@ const Home = () => {
     };
 
     const shopify_fn = async () => {
-        const data = await new ShopifyAction(state.shopify_domain, assign_skus_to_arr());
+        const data = await new ShopifyAction(assign_skus_to_arr());
         console.log(data);
     };
 
     const amazon_fn = async () => {
-        const data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
+        const data = await new AmazonAction(assign_skus_to_arr());
         console.log(data);
     };
 
@@ -88,8 +106,13 @@ const Home = () => {
 
         void LogOrErrorSet.get_instance().capture_error(async () => {
             const start = performance.now();
-            const shopify_data = await new ShopifyAction(state.shopify_domain, assign_skus_to_arr());
-            const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
+            const skus = assign_skus_to_arr();
+            const where = skus.length ? `sku in (${skus.map(sku => '"' + sku + '"').join()})` : undefined;
+            // const shopify_data = await new ShopifyAction(state.shopify_domain, assign_skus_to_arr());
+            // const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
+            // debugger;
+            const shopify_data = await table.shopify_product.get_data(where);
+            const amazon_data = await table.amazon_product.get_data(where);
 
             const data = await new Compare(amazon_data, shopify_data).start();
             // console.log(data);
@@ -117,13 +140,8 @@ const Home = () => {
                             void set_assign_skus(e.target.value);
                         }}
                     />
-                    <Button type="primary" onClick={() => void action()}>运行</Button>
-                    <OtherActionButton
-                        amazon_domain={state.amazon_domain}
-                        amazon_collection_urls={state.amazon_collection_urls}
-                        shopify_domain={state.shopify_domain}
-                        assign_skus={assign_skus_to_arr()}
-                    >
+                    <Button type="primary" onClick={() => void action()}>运行(需要数据入库)</Button>
+                    <OtherActionButton assign_skus={assign_skus_to_arr()} >
                         其他
                     </OtherActionButton>
                     <TestButton>test</TestButton>
@@ -151,9 +169,6 @@ const Home = () => {
                                         <div className="p-10 p-t-0">
                                             <ResultData
                                                 result={state.result}
-                                                shopify_domain={state.shopify_domain}
-                                                shopify_store_url={state.shopify_store_url}
-                                                amazon_domain={state.amazon_domain}
                                                 onClick={(item) => ser_render_code(JSON.stringify(item, null, 8), 'json')}
                                                 onLoading={(e) => setLoading(e)}
                                             />

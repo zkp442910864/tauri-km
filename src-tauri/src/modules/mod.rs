@@ -25,6 +25,7 @@ pub use common_mod::page_sustain_screenshot;
 pub use common_mod::task_create_folder;
 pub use common_mod::task_download_imgs;
 pub use common_mod::MY_BROWSER;
+pub use common_mod::MY_BROWSER_STATUS;
 
 /** 页面截图 */
 #[command]

@@ -47,6 +47,24 @@ where
     }
 }
 
+pub struct BrowserStatus {
+    status: bool,
+}
+
+impl BrowserStatus {
+    pub fn new() -> Self {
+        Self { status: false }
+    }
+
+    pub fn set_status(&mut self, val: bool) {
+        self.status = val;
+    }
+
+    pub fn get_status(&self) -> bool {
+        self.status
+    }
+}
+
 // 定义枚举，用于描述每种类型
 #[derive(Debug)]
 pub enum TParseTypeMsg {

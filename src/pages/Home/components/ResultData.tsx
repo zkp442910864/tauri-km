@@ -7,12 +7,10 @@ import { open } from '@tauri-apps/plugin-shell';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useDebounceEffect, useStateExtend } from '@/hooks';
 import { ShopifyStoreAction } from '../modules/core/shopify_store_action';
+import { GLOBAL_DATA } from '../modules/global_data';
 
-export const ResultData: FC<{result: CompareData[], shopify_store_url: string, shopify_domain: string, amazon_domain: string, onClick: (item: unknown) => void, onLoading: (val: boolean) => void}> = ({
+export const ResultData: FC<{result: CompareData[], onClick: (item: unknown) => void, onLoading: (val: boolean) => void}> = ({
     result,
-    shopify_domain,
-    amazon_domain,
-    shopify_store_url,
     onClick,
     onLoading,
 }) => {
@@ -23,6 +21,11 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
         record_val: [] as string[],
         shopify_store_action: null as null | ShopifyStoreAction,
     });
+    const {
+        amazon_domain,
+        shopify_domain,
+        shopify_store_url,
+    } = GLOBAL_DATA.CURRENT_STORE.config;
 
     const color_map = {
         add: 'color-success',
@@ -142,7 +145,7 @@ export const ResultData: FC<{result: CompareData[], shopify_store_url: string, s
 
     useDebounceEffect(() => {
         state.shopify_store_action = new ShopifyStoreAction(shopify_store_url);
-    }, [shopify_store_url,]);
+    }, []);
 
     return (
         <>

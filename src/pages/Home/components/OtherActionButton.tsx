@@ -4,20 +4,15 @@ import { ShopifyAction } from '../modules/core/shopify_action';
 import { useStateExtend } from '@/hooks';
 import { open } from '@tauri-apps/plugin-shell';
 import { appDataDir, join } from '@tauri-apps/api/path';
-import { shopify_admin_api } from '../modules/shopify_admin_api';
 import { confirm, log_error } from '@/utils';
-import { IOtherData } from '../modules/types/index.type';
 import { DB_NAME, reset_database, table } from '../modules/database';
 import { AmazonAction } from '../modules/core/amazon_action';
 import { amazon_choice_fn } from './AmazonChoice';
 
 
-export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode, assign_skus: string[], amazon_domain: string, amazon_collection_urls: string[]}> = ({
-    shopify_domain,
+export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}> = ({
     children,
     assign_skus,
-    amazon_domain,
-    amazon_collection_urls,
 }) => {
     const [loading, setLoading,] = useStateExtend(false);
 
@@ -30,6 +25,10 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
                         label: 'shopify数据写入库',
                     },
                     {
+                        key: 'shopify_in_sql_data_not_inventory',
+                        label: 'shopify数据写入库(不更新库存)',
+                    },
+                    {
                         key: 'amazon_in_sql_data',
                         label: 'amazon数据写入库',
                     },
@@ -40,6 +39,10 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
                     {
                         key: 'open_sql_file',
                         label: '打开sql文件',
+                    },
+                    {
+                        key: 'open_web_cache_data_file',
+                        label: '打开web_cache_data文件',
                     },
                     {
                         key: 'reset_db',
@@ -55,35 +58,28 @@ export const OtherActionButton: FC<{shopify_domain: string, children: ReactNode,
                         await log_error.capture_error(async () => {
                             if (key === 'shopify_in_sql_data') {
                                 await confirm(title);
-                                const shopify_data = await new ShopifyAction(shopify_domain, assign_skus);
-                                for (const item of shopify_data.sku_data) {
-                                    await log_error.capture_error(async () => {
-                                        const data = item.detail_map!.shopify_inventory_detail.data as IOtherData;
-                                        const inventory_data = await shopify_admin_api.get_inventory_detail(`${item.detail_map!.shopify_sku_id.data! as number}`);
-                                        data.inventory_total = inventory_data.inventory_quantity;
-                                        inventory_data.data.forEach(({ name, quantity, }) => {
-                                            switch (name) {
-                                                case 'US':
-                                                    data.inventory_us = quantity;
-                                                    break;
-                                                case 'CA':
-                                                    data.inventory_ca = quantity;
-                                                    break;
-                                            }
-                                        });
-                                    }, item);
-                                }
+                                const shopify_data = await new ShopifyAction(assign_skus, true);
+                                await table.shopify_product.push_data(shopify_data.sku_data, true);
+                            }
+                            else if (key === 'shopify_in_sql_data_not_inventory') {
+                                await confirm(title);
+                                const shopify_data = await new ShopifyAction(assign_skus);
                                 await table.shopify_product.push_data(shopify_data.sku_data);
                             }
                             else if (key === 'amazon_in_sql_data') {
                                 await confirm(title);
                                 // amazon_domain amazon_collection_urls
-                                const amazon_data = await new AmazonAction(amazon_domain, amazon_collection_urls, assign_skus);
+                                const amazon_data = await new AmazonAction(assign_skus);
                                 await table.amazon_product.push_data(amazon_data.sku_data);
                             }
                             else if (key === 'open_sql_file') {
                                 const base_url = await appDataDir();
                                 const url = await join(base_url, DB_NAME);
+                                await open(url);
+                            }
+                            else if (key === 'open_web_cache_data_file') {
+                                const base_url = await appDataDir();
+                                const url = await join(base_url, 'web_cache_data');
                                 await open(url);
                             }
                             else if (key === 'reset_db') {

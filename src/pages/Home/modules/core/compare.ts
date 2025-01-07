@@ -181,8 +181,14 @@ export class Compare {
                     msgs.push('get_price.no_price');
                 }
                 else if (shopify_val.price !== amazon_val.price || shopify_val.old_price !== amazon_val.old_price) {
-                    is_update = true;
-                    msgs.push('get_price');
+                    // 价格相同的时候,原价比当前价格低的时候,不进行修改
+                    if (shopify_val.price === amazon_val.price && amazon_val.old_price! <= amazon_val.price!) {
+                        //
+                    }
+                    else {
+                        is_update = true;
+                        msgs.push('get_price');
+                    }
                 }
             }
             else if (shopify_item.type === 'get_sku_model') {

@@ -1,6 +1,6 @@
 use super::{
     log_mod::{self, push_web_log, WebLog},
-    other_model::Response,
+    other_model::{BrowserStatus, Response},
 };
 
 use headless_chrome::{
@@ -11,7 +11,14 @@ use headless_chrome::{Browser, LaunchOptions, Tab};
 use image::{load_from_memory, EncodableLayout};
 use lazy_static::lazy_static;
 use reqwest::blocking;
-use std::{borrow::Cow, fs, path::Path, sync::Arc, thread::sleep, time::Duration};
+use std::{
+    borrow::Cow,
+    fs,
+    path::Path,
+    sync::{Arc, Mutex},
+    thread::sleep,
+    time::Duration,
+};
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_http::reqwest;
 use template_matching::{find_extremes, Extremes, Image, MatchTemplateMethod, TemplateMatcher};
@@ -40,11 +47,14 @@ lazy_static! {
         proxy_server: None,
     })
     .unwrap();
+    pub static ref MY_BROWSER_STATUS: Mutex<BrowserStatus> = Mutex::new(BrowserStatus::new());
 }
 
 /** 启动浏览器 */
 pub fn start_browser(url: &str) -> Result<(Arc<Tab>, &Browser), String> {
     push_web_log(WebLog::new_default("启动浏览器"));
+
+    MY_BROWSER_STATUS.lock().unwrap().set_status(true);
 
     let browser = &MY_BROWSER;
 

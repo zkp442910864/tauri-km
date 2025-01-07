@@ -369,15 +369,18 @@ pub async fn task_shopify_store_product_update_item(
                 sleep(Duration::from_millis(1000));
 
                 let upload_input = tab.find_element("div[role=dialog] input[type=file]").unwrap();
-                page_upload_imgs(&app, &upload_input, &sku, "desc");
+                let img_len = page_upload_imgs(&app, &upload_input, &sku, "desc");
 
-                confirm_loading(&tab, false, Some("div[role=dialog] button[class^=_CancelButton]"));
-                confirm_loading(&tab, true, Some("div[role=dialog] div[class^=_HeaderIcon]"));
+                if img_len > 0 {
+                    confirm_loading(&tab, false, Some("div[role=dialog] button[class^=_CancelButton]"));
+                    confirm_loading(&tab, true, Some("div[role=dialog] div[class^=_HeaderIcon]"));
 
-                sleep(Duration::from_millis(1000));
-                let _ = tab.find_element("div[role=dialog] .Polaris-Modal-Footer button.Polaris-Button--variantPrimary").unwrap().click();
-                sleep(Duration::from_millis(1000));
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                    sleep(Duration::from_millis(1000));
+                    let _ = tab.find_element("div[role=dialog] .Polaris-Modal-Footer button.Polaris-Button--variantPrimary").unwrap().click();
+                    sleep(Duration::from_millis(1000));
+                    let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                }
+
             }
             // Some(TParseTypeMsg::GetSkuModel) => {},
             // Some(TParseTypeMsg::GetDescText) => {},
@@ -397,7 +400,7 @@ pub async fn task_shopify_store_product_update_item(
     }
 }
 
-fn page_upload_imgs(app: &AppHandle, el: &Element<'_>, sku: &str, folder_type: &str) {
+fn page_upload_imgs(app: &AppHandle, el: &Element<'_>, sku: &str, folder_type: &str) -> usize {
     let path_url = Path::new(&sku).join(folder_type);
     let folder_path = create_folder(app.clone(), path_url.to_string_lossy().to_string());
     let urls: Vec<String> = fs::read_dir(folder_path)
@@ -410,6 +413,7 @@ fn page_upload_imgs(app: &AppHandle, el: &Element<'_>, sku: &str, folder_type: &
         .collect();
     let url_refs: Vec<&str> = urls.iter().map(|s| s.as_str()).collect();
     let _ = el.set_input_files(&url_refs);
+    urls.len()
 }
 
 /** 保存并关闭页面 */

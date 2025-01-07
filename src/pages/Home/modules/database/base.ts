@@ -34,6 +34,11 @@ export abstract class CDatabase<T = never> {
         return Promise.resolve();
     }
 
+    async get_data(where?: string): Promise<unknown> {
+        // Implementation goes here
+        return Promise.resolve();
+    }
+
     async reset_table() {
         await db.execute(`drop table if exists ${this.table_name}`);
         await this.create_table();

@@ -107,6 +107,21 @@ interface IOtherData {
     inventory_ca?: number | string;
 }
 
+interface IConfig {
+    name: string;
+    config: {
+        access_token: string,
+        api_version: string,
+        store_domain: string,
+
+        shopify_store_url: string,
+        shopify_domain: string,
+
+        amazon_domain: string,
+        amazon_collection_urls: string[],
+    };
+}
+
 export type {
     IDetailContentRoot,
     IDetailContentData,
@@ -117,5 +132,6 @@ export type {
     TParseType,
     TParseData,
     IOtherData,
-    TParseTypeMsg
+    TParseTypeMsg,
+    IConfig
 };

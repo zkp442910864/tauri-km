@@ -1,49 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
-import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
 import { store } from '../store';
 import { LogOrErrorSet } from '@/utils';
+import { GLOBAL_DATA } from '../global_data';
 
 class ShopifyAdminApi {
     static instance: ShopifyAdminApi;
 
-    configs: IConfig[];
-    current_store: IConfig;
+    current_store = GLOBAL_DATA.CURRENT_STORE;
 
-    static async select_config_file() {
-        const file_path = await open({
-            title: '配置文件',
-            multiple: false,
-            directory: false,
-            filters: [
-                { name: 'filter', extensions: ['json',], },
-            ],
-        });
-        if (!file_path) return [];
-
-        const json = await readTextFile(file_path, { baseDir: BaseDirectory.AppCache, });
-        const data = JSON.parse(json) as IConfig[];
-        await store.set_val('ShopifyAdminApi', data);
-        return data;
-    }
-
-    static init = async (assign_store = 'chonchow') => {
-        let data = await store.get_val<IConfig[]>('ShopifyAdminApi');
-        if (!data) {
-            data = await ShopifyAdminApi.select_config_file();
-        }
-
-        ShopifyAdminApi.instance = new ShopifyAdminApi(data, assign_store);
+    static init = () => {
+        ShopifyAdminApi.instance = new ShopifyAdminApi();
     };
 
-    constructor(configs: IConfig[], assign_store: string) {
-        const current_store = configs.find(ii => ii.name === assign_store);
-        this.configs = configs;
-        if (!current_store) {
-            throw new Error('导入的数据中,匹配不到指定店铺');
-        }
-
-        this.current_store = current_store;
+    constructor() {
     }
 
     async get_data<T>(query: string, variables?: Record<string, unknown>) {

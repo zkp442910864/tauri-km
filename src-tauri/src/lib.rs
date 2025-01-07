@@ -4,7 +4,7 @@ use std::process::Command;
 use modules::{
     custom_test, page_sustain_screenshot, shopify_mod, take_graphql_client, take_screenshot_v2,
     task_amazon_images_diff, task_amazon_images_diff_v2, task_amazon_product_fetch_html,
-    task_create_folder, task_download_imgs, task_find_amazon_sku, MY_BROWSER,
+    task_create_folder, task_download_imgs, task_find_amazon_sku, MY_BROWSER, MY_BROWSER_STATUS,
 };
 use std::time::Duration;
 use tauri::{async_runtime::spawn, Manager};
@@ -14,6 +14,7 @@ use tokio::{runtime::Runtime, task::spawn_blocking};
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -24,23 +25,25 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
             // println!("WebView get_webview_window: {:?}", 3);
-            let browser = &MY_BROWSER;
-            let pid = browser.get_process_id().unwrap();
+
             let web_win = app.get_webview_window("main").unwrap();
 
-            // browser_keep_alive();
             // web_win.open_devtools();
             web_win.on_window_event(move |e| {
                 let str = format!("{:?}", e);
                 // println!("Log::::on_window_event::::{}", str);
                 #[cfg(target_os = "windows")]
                 if str == "Destroyed" {
-                    let _ = Command::new("taskkill")
-                        .arg("/F")
-                        .arg("/PID")
-                        .arg(pid.to_string())
-                        .output()
-                        .expect("Unable to terminate the browser process");
+                    if MY_BROWSER_STATUS.lock().unwrap().get_status() {
+                        let browser = &MY_BROWSER;
+                        let pid = browser.get_process_id().unwrap();
+                        let _ = Command::new("taskkill")
+                            .arg("/F")
+                            .arg("/PID")
+                            .arg(pid.to_string())
+                            .output()
+                            .expect("Unable to terminate the browser process");
+                    }
                 }
             });
 

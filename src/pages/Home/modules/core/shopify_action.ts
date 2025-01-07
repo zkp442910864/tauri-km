@@ -1,15 +1,17 @@
-import { get_real_dom_text, handle_number, LogOrErrorSet } from '@/utils';
+import { get_real_dom_text, handle_number, log_error, LogOrErrorSet } from '@/utils';
 import { fetch } from '@tauri-apps/plugin-http';
 import { stringify } from 'qs';
 import { parallel, retry } from 'radash';
 import { IHtmlParseData, IOtherData, IShopifyData, IShopifyProductData, TParseData, TParseType, TThenData } from '../types/index.type';
 import { shopify_admin_api } from '../shopify_admin_api';
+import { GLOBAL_DATA } from '../global_data';
 
 export class ShopifyAction {
 
-    domain;
+    domain = GLOBAL_DATA.CURRENT_STORE.config.shopify_domain;
     collection_url = '/collections/all';
     product_url = '/products';
+    fill_inventory = false;
     assign_skus: string[] = [];
     sku_data: IShopifyData[] = [];
     sku_map: Record<string, IShopifyData> = {};
@@ -17,9 +19,9 @@ export class ShopifyAction {
     catchFn?: (err: unknown) => void;
     logs: string[] = [];
 
-    constructor(domain: string, assign_skus: string[]) {
-        this.domain = domain;
+    constructor(assign_skus: string[], fill_inventory = false) {
         this.assign_skus = assign_skus;
+        this.fill_inventory = fill_inventory;
         void this.init();
     }
 
@@ -178,8 +180,9 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));
         new_data.push(new IHtmlParseData('shopify_sku_id', data.shopify_sku_id));
         new_data.push(new IHtmlParseData('shopify_inventory', data.inventory));
-        // 在入库的时候,会去完善
-        new_data.push(new IHtmlParseData('shopify_inventory_detail', {}));
+        if (this.fill_inventory) {
+            new_data.push(new IHtmlParseData('shopify_inventory_detail', await this.fetch_Inventory(data.shopify_sku_id!)));
+        }
 
         return [
             new_data,
@@ -188,6 +191,28 @@ export class ShopifyAction {
                 return map;
             }, {} as Record<TParseType, TParseData>),
         ] as [typeof new_data, Record<TParseType, TParseData>];
+    }
+
+    async fetch_Inventory(vid: number) {
+        const result = await log_error.capture_error(async () => {
+            const data: IOtherData = {};
+            const inventory_data = await shopify_admin_api.get_inventory_detail(vid + '');
+            data.inventory_total = inventory_data.inventory_quantity;
+            inventory_data.data.forEach(({ name, quantity, }) => {
+                switch (name) {
+                    case 'US':
+                        data.inventory_us = quantity;
+                        break;
+                    case 'CA':
+                        data.inventory_ca = quantity;
+                        break;
+                }
+            });
+            return data;
+        });
+
+
+        return result;
     }
 
     /** 输出结果 */

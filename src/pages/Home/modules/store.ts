@@ -35,5 +35,5 @@ export const store = new Proxy({} as Store, {
     },
 });
 
-type TKey = 'ShopifyAdminApi';
+type TKey = 'configs';
 
