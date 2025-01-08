@@ -4,6 +4,7 @@ import { CompareData } from './compare';
 import { invoke } from '@tauri-apps/api/core';
 import { LogOrErrorSet } from '@/utils';
 import { table } from '../database';
+import { ShopifyAction } from './shopify_action';
 
 export class ShopifyStoreAction {
     static is_login_status = false;
@@ -22,6 +23,9 @@ export class ShopifyStoreAction {
             const tab_id = await this.open_product_page(data);
             await this.each_update_data(data, tab_id);
             await this.save_data(data, tab_id);
+
+            const shopify_data = await new ShopifyAction([data.data.sku,]);
+            await table.shopify_product.push_data(shopify_data.sku_data);
         }
         catch (error) {
             console.error(error);
@@ -35,7 +39,9 @@ export class ShopifyStoreAction {
             const tab_id = await this.open_product_page(data);
             await this.each_add_data(data, tab_id);
             await this.save_data(data, tab_id);
-            // await table.shopify_product.push_data([]);
+
+            const shopify_data = await new ShopifyAction([data.data.sku,]);
+            await table.shopify_product.push_data(shopify_data.sku_data);
         }
         catch (error) {
             console.error(error);
