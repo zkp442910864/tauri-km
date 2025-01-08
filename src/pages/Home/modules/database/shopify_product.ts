@@ -29,6 +29,8 @@ export class ShopifyProduct extends CDatabase {
                 get_content_imgs              TEXT,
                 get_content_json              TEXT,
                 amazon_address_url              TEXT,
+                get_choice           NUMERIC NOT NULL
+                                        DEFAULT (0),
 
                 shopify_product_id              TEXT,
                 shopify_sku_id              TEXT,
@@ -59,6 +61,7 @@ export class ShopifyProduct extends CDatabase {
             'get_content_imgs',
             'get_content_json',
             'amazon_address_url',
+            'get_choice',
 
             'shopify_product_id',
             'shopify_sku_id',
@@ -101,6 +104,7 @@ export class ShopifyProduct extends CDatabase {
             'get_content_imgs',
             'get_content_json',
             'amazon_address_url',
+            'get_choice',
 
             'shopify_product_id',
             'shopify_sku_id',
@@ -157,6 +161,7 @@ export class ShopifyProduct extends CDatabase {
             'get_content_imgs',
             'get_content_json',
             'amazon_address_url',
+            'get_choice',
 
             'shopify_product_id',
             'shopify_sku_id',

@@ -175,6 +175,7 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('get_content_imgs', data.content_imgs || []));
         new_data.push(new IHtmlParseData('get_content_json', data.content_json || ''));
 
+        new_data.push(new IHtmlParseData('get_choice', +data.recommend));
         new_data.push(new IHtmlParseData('amazon_address_url', data.amazon_address_url || ''));
 
         new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));

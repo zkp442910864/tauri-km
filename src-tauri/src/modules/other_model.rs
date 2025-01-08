@@ -88,6 +88,7 @@ pub enum TParseTypeMsg {
     GetBannerImgsAdd,
     AmazonProductBrandAdd,
     AmazonProductCollectionsAdd,
+    GetChoice,
 }
 
 // 使用 `phf` 静态哈希映射来关联字符串和枚举值
@@ -115,6 +116,8 @@ pub static PARSE_TYPE_MAP: phf::Map<&'static str, TParseTypeMsg> = phf_map! {
     "get_banner_imgs.add" => TParseTypeMsg::GetBannerImgsAdd,
     "get_content_imgs" => TParseTypeMsg::GetContentImgs,
     "get_content_imgs.add" => TParseTypeMsg::GetContentImgs,
+    "get_choice" => TParseTypeMsg::GetChoice,
+    "get_choice.add" => TParseTypeMsg::GetChoice,
     "amazon_product_brand.add" => TParseTypeMsg::AmazonProductBrandAdd,
     "amazon_product_collections.add" => TParseTypeMsg::AmazonProductCollectionsAdd,
 

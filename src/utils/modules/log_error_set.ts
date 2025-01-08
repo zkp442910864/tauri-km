@@ -107,7 +107,7 @@ export class LogOrErrorSet {
 }
 
 export const log_error = new Proxy({} as LogOrErrorSet, {
-    get: (target, property, receiver) => {
+    get: (_, property) => {
         return LogOrErrorSet.instance[property as keyof LogOrErrorSet];
     },
 });

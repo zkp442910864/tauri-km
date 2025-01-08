@@ -268,6 +268,22 @@ pub async fn task_shopify_store_product_update_item(
                 quick_adhesive_value(&app, &el, &tab, &data);
                 let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
             },
+            Some(TParseTypeMsg::GetChoice) => {
+                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(6)").unwrap();
+                let _ = el.click();
+                sleep(Duration::from_millis(100));
+
+                if data == "1" {
+                    let _ = tab.press_key("ArrowDown");
+                    sleep(Duration::from_millis(100));
+                    let _ = tab.press_key("ArrowDown");
+                }
+                else {
+                    let _ = tab.press_key("ArrowDown");
+                }
+                sleep(Duration::from_millis(100));
+                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+            },
             Some(TParseTypeMsg::GetFeaturesSpecs) => {
                 let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(3)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);

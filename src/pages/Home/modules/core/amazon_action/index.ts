@@ -3,7 +3,7 @@ import { core } from '@tauri-apps/api';
 import { stringify } from 'qs';
 import { alphabetical, parallel, retry, sleep } from 'radash';
 import { TThenData, IAmazonData, IHtmlParseData, TParseData, TParseType } from '../../types/index.type';
-import { get_model, get_detail_v2, amazon_choice, get_title, get_banner_imgs, get_price, get_sku_model, get_desc_text, get_content_json } from './utils';
+import { get_model, get_detail_v2, get_title, get_banner_imgs, get_price, get_sku_model, get_desc_text, get_content_json, get_choice } from './utils';
 import { GLOBAL_DATA } from '../../global_data';
 
 export class AmazonAction {
@@ -152,7 +152,6 @@ export class AmazonAction {
                         parse_data.push(new IHtmlParseData('amazon_product_sku', sku));
                         parse_data.push(new IHtmlParseData('amazon_product_brand', 'CHONCHOW'));
                         parse_data.push(new IHtmlParseData('amazon_product_collections', ['Other',].join(',')));
-                        parse_data.push(amazon_choice(dom));
                         // parse_data.push(new IHtmlParseData('amazon_product_brand', sku));
 
                         // 标题
@@ -176,6 +175,7 @@ export class AmazonAction {
                         parse_data.push(...await get_content_json(dom));
                         // sku关联
                         parse_data.push(new IHtmlParseData('get_relevance_tag', inline_variant_skus.length > 1 ? `关联:${inline_variant_skus.join('+')}` : ''));
+                        parse_data.push(new IHtmlParseData('get_choice', +get_choice(dom)));
 
                         const error_data = parse_data.find(ii => !!ii.error);
                         // if (!!error_data && fail_count < this.retry_count - 1) {

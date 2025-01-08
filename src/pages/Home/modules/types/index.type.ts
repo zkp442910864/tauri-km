@@ -10,7 +10,6 @@ type TParseType =
     'amazon_address_url' |
     'amazon_product_brand' |
     'amazon_product_collections' |
-    'amazon_choice' |
     'amazon_first_image' |
 
     'get_title' |
@@ -21,6 +20,7 @@ type TParseType =
     'get_features_specs' |
     'get_content_json' |
     'get_sku_model' |
+    'get_choice' |
 
     'get_banner_imgs' |
     'get_content_imgs';
@@ -43,6 +43,7 @@ interface IShopifyProductData {
     desc_text: string;
     inventory: string;
     banner_imgs: string[];
+    recommend: boolean;
     amazon_address_url?: string | null;
     detail?: string | null;
     sku_model?: string | null;

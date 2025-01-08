@@ -1,6 +1,6 @@
 import { useDebounceEffect } from '@/hooks';
 import { Loading } from '@/layout';
-import { FC, ReactNode, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useRef, useState } from 'react';
 
 export const AwaitComponent: FC<{children: ReactNode, promise: Promise<unknown>}> = ({
     children,

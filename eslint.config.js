@@ -3,11 +3,13 @@ import eslintJs from '@eslint/js';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import tsEslint from 'typescript-eslint';
+import { cwd } from 'process';
+// import path from 'path';
 
 
 export default tsEslint.config(
     {
-        ignores: ['dist', 'index.html',],
+        ignores: ['dist', 'index.html', 'src-tauri', 'build',],
     },
     {
         files: ['**/*.ts', '**/*.tsx',],
@@ -23,9 +25,9 @@ export default tsEslint.config(
         ],
         languageOptions: {
             parserOptions: {
-                // projectService: true,
                 project: './tsconfig.json',
-                tsconfigRootDir: import.meta.name,
+                // projectService: true,
+                tsconfigRootDir: import.meta.dirname,
             },
             ecmaVersion: 'latest',
             globals: globals.browser,
@@ -47,7 +49,6 @@ export default tsEslint.config(
                 SwitchCase: 1,
                 ignoredNodes: ['TemplateLiteral',],
             },],
-            '@typescript-eslint/no-unused-vars': [1,],
             semi: [2, 'always',],
             'comma-dangle': [
                 'error', {
@@ -73,6 +74,18 @@ export default tsEslint.config(
             'space-before-function-paren': [1, { anonymous: 'always', named: 'never', asyncArrow: 'always', },],
             '@typescript-eslint/no-unused-expressions': 0,
             'react-hooks/exhaustive-deps': 0,
+            '@typescript-eslint/no-unused-vars': [
+                1,
+                {
+                    args: 'all',
+                    argsIgnorePattern: '^_',
+                    caughtErrors: 'all',
+                    caughtErrorsIgnorePattern: '^_',
+                    destructuredArrayIgnorePattern: '^_',
+                    varsIgnorePattern: '^_',
+                    ignoreRestSiblings: true,
+                },
+            ],
         },
     }
 );

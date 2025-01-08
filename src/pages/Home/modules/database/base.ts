@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { default as TauriDatabase } from '@tauri-apps/plugin-sql';
 
 export const DB_NAME = 'shopify_data.db';

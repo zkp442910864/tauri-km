@@ -10,6 +10,7 @@
         "tauri:build": "tauri build",
         "tauri:build-debug": "tauri build --debug",
         "lint": "eslint .",
+        "ts:check": "tsc -b",
         "preview": "vite preview"
     },
     "dependencies": {

@@ -1,5 +1,4 @@
 import { invoke } from '@tauri-apps/api/core';
-import { store } from '../store';
 import { LogOrErrorSet } from '@/utils';
 import { GLOBAL_DATA } from '../global_data';
 
@@ -174,16 +173,10 @@ class ShopifyAdminApi {
 
 export const init_shopify_admin_api = ShopifyAdminApi.init;
 export const shopify_admin_api = new Proxy({} as ShopifyAdminApi, {
-    get: (target, property, receiver) => {
+    get: (_, property) => {
         return ShopifyAdminApi.instance[property as keyof ShopifyAdminApi];
     },
 });
-
-interface IConfig {
-    name: string;
-    config: {access_token: string, api_version: string, store_domain: string};
-}
-
 
 type TShopifyDataModel<K extends string, T = TShopifyDataInlineModel & IData> = {
     data: {

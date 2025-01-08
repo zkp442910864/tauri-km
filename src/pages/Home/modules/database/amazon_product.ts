@@ -1,5 +1,5 @@
 import { log_error } from '@/utils';
-import { IAmazonData, IHtmlParseData, IOtherData, TParseData, TParseType, TThenData } from '../types/index.type';
+import { IAmazonData, IHtmlParseData, TParseData, TParseType, TThenData } from '../types/index.type';
 import { CDatabase, db } from './base';
 import dayjs from 'dayjs';
 
@@ -28,14 +28,14 @@ export class AmazonProduct extends CDatabase {
                 get_detail              TEXT,
                 get_content_imgs              TEXT,
                 get_content_json              TEXT,
+                get_choice           NUMERIC NOT NULL
+                                        DEFAULT (0),
 
                 amazon_first_image           TEXT,
                 amazon_address_url           TEXT,
                 amazon_product_sku           TEXT,
                 amazon_product_brand           TEXT,
                 amazon_product_collections           TEXT,
-                amazon_choice           NUMERIC NOT NULL
-                                        DEFAULT (0),
 
                 status             NUMERIC NOT NULL
                                         DEFAULT (1),
@@ -56,13 +56,13 @@ export class AmazonProduct extends CDatabase {
             'get_detail',
             'get_content_imgs',
             'get_content_json',
+            'get_choice',
 
             'amazon_first_image',
             'amazon_address_url',
             'amazon_product_sku',
             'amazon_product_brand',
             'amazon_product_collections',
-            'amazon_choice',
 
             'status',
             'update_date',
@@ -89,13 +89,13 @@ export class AmazonProduct extends CDatabase {
             'get_detail',
             'get_content_imgs',
             'get_content_json',
+            'get_choice',
 
             'amazon_first_image',
             'amazon_address_url',
             'amazon_product_sku',
             'amazon_product_brand',
             'amazon_product_collections',
-            'amazon_choice',
 
             'status',
             'create_date',
@@ -142,13 +142,13 @@ export class AmazonProduct extends CDatabase {
             'get_detail',
             'get_content_imgs',
             'get_content_json',
+            'get_choice',
 
             'amazon_first_image',
             'amazon_address_url',
             'amazon_product_sku',
             'amazon_product_brand',
             'amazon_product_collections',
-            'amazon_choice',
         ];
         const result: Record<TParseType | 'sku', string>[] = await db.select(
             `select ${table_keys.join()} from ${this.table_name} where status=1 ${where ? 'and ' + where : ''}`
@@ -189,7 +189,7 @@ export class AmazonProduct extends CDatabase {
 
             if (key === 'status') return 1;
             if (key === 'sku') return item.sku;
-            if (key === 'amazon_choice') return +(detail_data || false);
+            // if (key === 'amazon_choice') return +(detail_data || false);
             if (['create_date', 'update_date',].includes(key)) return dayjs().format('YYYY-MM-DD HH:mm:ss');
 
             if (typeof detail_data !== 'undefined') {

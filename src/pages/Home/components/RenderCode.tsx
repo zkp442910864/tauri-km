@@ -1,5 +1,4 @@
 import { useDebounceEffect, useStateExtend } from '@/hooks';
-import { Splitter } from 'antd';
 import { FC, useRef } from 'react';
 import { createHighlighterCoreSync, createJavaScriptRegexEngine, ShikiTransformer } from 'shiki';
 import theme from 'shiki/themes/tokyo-night.mjs';

@@ -1,5 +1,5 @@
 import { message, Modal } from 'antd';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from '../types/index.type';
+import { IAmazonData, IOtherData, TParseType, TParseTypeMsg } from '../types/index.type';
 import { CompareData } from './compare';
 import { invoke } from '@tauri-apps/api/core';
 import { LogOrErrorSet } from '@/utils';
@@ -135,6 +135,9 @@ export class ShopifyStoreAction {
                 else if (type === 'get_desc_text') {
                     value = (update_data.data as IOtherData).html!;
                 }
+                else if (type === 'get_choice') {
+                    value = update_data.data as number + '';
+                }
 
                 const res = await invoke<string>('task_shopify_store_product_update_item', {
                     url: `${this.store_url}/products/${p_id}`,
@@ -175,6 +178,9 @@ export class ShopifyStoreAction {
             else if (item.type === 'get_desc_text') {
                 value = (item.data as IOtherData).html!;
             }
+            else if (item.type === 'get_choice') {
+                value = item.data as number + '';
+            }
 
             if (!value || ['amazon_first_image',].includes(item.type)) continue;
             const res = await invoke<string>('task_shopify_store_product_update_item', {
@@ -194,7 +200,7 @@ export class ShopifyStoreAction {
     }
 
     /** 都操作完了后,执行完成函数,并关闭窗口 */
-    async save_data(data: CompareData<IAmazonData>, tab_id: string) {
+    async save_data(_: CompareData<IAmazonData>, tab_id: string) {
         // await this.confirm_next('是否保存数据');
         const res = await invoke<string>('task_shopify_store_product_finish', { tabId: tab_id, });
         const json = JSON.parse(res) as ITauriResponse<null>;

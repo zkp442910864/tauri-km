@@ -70,12 +70,12 @@ const Home = () => {
         return new_val;
     };
 
-    const shopify_fn = async () => {
+    const _shopify_fn = async () => {
         const data = await new ShopifyAction(assign_skus_to_arr());
         console.log(data);
     };
 
-    const amazon_fn = async () => {
+    const _amazon_fn = async () => {
         const data = await new AmazonAction(assign_skus_to_arr());
         console.log(data);
     };

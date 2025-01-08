@@ -1,7 +1,6 @@
-import { alphabetical, crush, omit } from 'radash';
+import { alphabetical, crush } from 'radash';
 import { IAmazonData, IDetailContentRoot, IOtherData, TParseTypeMsg, TThenData } from '../types/index.type';
 import { LogOrErrorSet } from '@/utils';
-import { image } from '@tauri-apps/api';
 import { invoke } from '@tauri-apps/api/core';
 
 export class Compare {
@@ -150,6 +149,12 @@ export class Compare {
                 if (shopify_item.data !== amazon_item.data) {
                     is_update = true;
                     msgs.push('get_title');
+                }
+            }
+            else if (shopify_item.type === 'get_choice') {
+                if (shopify_item.data !== amazon_item.data) {
+                    is_update = true;
+                    msgs.push('get_choice');
                 }
             }
             else if (shopify_item.type === 'amazon_address_url') {

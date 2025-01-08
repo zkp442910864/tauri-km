@@ -15,9 +15,9 @@ export const get_title = (dom: Document) => {
     }
 };
 
-export const amazon_choice = (dom: Document) => {
+export const get_choice = (dom: Document) => {
     const text = (dom.querySelector<HTMLDivElement>('#acBadge_feature_div')?.innerText || '').toLocaleLowerCase();
-    return new IHtmlParseData('amazon_choice', text.indexOf('choice') > -1);
+    return text.indexOf('choice') > -1;
 };
 
 export const get_banner_imgs = (dom: Document) => {
@@ -64,7 +64,7 @@ export const get_sku_model = (dom: Document, sku: string, detail_model: string) 
         const data = JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
         return new IHtmlParseData('get_sku_model', `${detail_model}&&&&${data[sku].join().replaceAll(',', ' ')}`);
     }
-    catch (error) {
+    catch (_) {
         return new IHtmlParseData('get_sku_model', `${detail_model}&&&&no model`);
         // return new IHtmlParseData('get_sku_model', null, '解析失败', error);
     }

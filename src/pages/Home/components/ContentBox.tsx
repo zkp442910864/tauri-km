@@ -1,6 +1,5 @@
 import { useDebounceEffect, useStateExtend } from '@/hooks';
-import { Splitter } from 'antd';
-import { FC, ReactNode, useEffect, useRef } from 'react';
+import { FC, ReactNode, useRef } from 'react';
 
 export const ContentBox: FC<{children: ReactNode}> = ({ children, }) => {
 

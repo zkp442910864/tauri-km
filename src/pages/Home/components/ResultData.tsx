@@ -1,8 +1,8 @@
 import { Button, Dropdown, List, message, Popover, Tag } from 'antd';
 import classNames from 'classnames';
-import { FC, useEffect, useRef } from 'react';
+import { FC, useRef } from 'react';
 import { CompareData } from '../modules/core/compare';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseType, TParseTypeMsg } from '../modules/types/index.type';
+import { IAmazonData, IOtherData, TParseType, TParseTypeMsg } from '../modules/types/index.type';
 import { open } from '@tauri-apps/plugin-shell';
 import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 import { useDebounceEffect, useStateExtend } from '@/hooks';
@@ -85,7 +85,7 @@ export const ResultData: FC<{result: CompareData[], onClick: (item: unknown) => 
         }
     };
 
-    const tag_copy = async (e: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: TParseTypeMsg, item: CompareData<IAmazonData>) => {
+    const tag_copy = async (_: React.MouseEvent<HTMLSpanElement, MouseEvent>, type: TParseTypeMsg, item: CompareData<IAmazonData>) => {
 
         const key = type.split('.')[0] as TParseType;
         const data = item.update_data?.detail_map?.[key];

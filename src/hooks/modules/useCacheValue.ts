@@ -19,7 +19,7 @@ export const useCacheValue = <S, >(key: string, valOrFn: S | (() => S)) => {
                 void setState(JSON.parse(val) as S);
             }
         }
-        catch (error) {
+        catch (_) {
             //
         }
     }, []);

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useDebounceEffect, useStateExtend } from '@/hooks';
 import { Card, Image, List, Typography } from 'antd';
 import { createRoot } from 'react-dom/client';
@@ -44,11 +45,11 @@ const AmazonChoice = () => {
 };
 
 export const amazon_choice_fn = () => {
-    const { promise, resolve, reject, } = Promise.withResolvers<boolean>();
+    const { promise, resolve, } = Promise.withResolvers<boolean>();
     const dom_id = `modal-${Date.now()}`;
     let render: ReturnType<typeof createRoot>;
 
-    const win_number = window.layer.open({
+    window.layer.open({
         type: 1, // page 层类型
         area: ['80%', '80%',],
         title: '亚马逊精选产品',
@@ -57,7 +58,7 @@ export const amazon_choice_fn = () => {
         anim: 0, // 0-6 的动画形式，-1 不开启
         shade: 0,
         content: `<div id="${dom_id}"></div>`,
-        success: (layero, index) => {
+        success: () => {
             const div = document.querySelector('#' + dom_id)!;
             render = createRoot(div);
             render.render(
