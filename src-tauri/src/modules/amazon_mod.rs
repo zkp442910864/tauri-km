@@ -184,6 +184,39 @@ pub async fn task_amazon_product_fetch_html(app: AppHandle, url: String) -> Resu
         }
     };
 
+    let toggle_reviews = |tab: &Arc<Tab>| {
+        // [id="cm-cr-sort-dropdown"]
+        let select = tab.find_element("#cm-cr-sort-dropdown");
+        // let _ = select.click();
+        // sleep(Duration::from_micros(500));
+        // let _ = select.click();
+        // sleep(Duration::from_secs(2));
+
+        if let Ok(select_el) = select {
+            let _ = select_el.scroll_into_view();
+            sleep(Duration::from_secs(1));
+            let _ = select_el.click();
+            sleep(Duration::from_secs(1));
+            let _ = tab.press_key("Tab");
+            sleep(Duration::from_secs(1));
+            let _ = tab.press_key("Enter");
+            sleep(Duration::from_secs(1));
+
+            let mut flag = true;
+            while flag {
+                let loading = tab.find_element("#cm-cr-dp-reviews-loading-wrapper");
+                if let Ok(loading_el) = loading {
+                    let str = loading_el.get_content().unwrap();
+                    // println!("html: {}", str);
+                    if str.find("aok-hidden").is_some() {
+                        flag = false;
+                    }
+                }
+                sleep(Duration::from_secs(2));
+            }
+        }
+    };
+
     let is_unfinished = |tab: &Arc<Tab>| {
         // let dom = tab.get_document().unwrap();
         // dom
@@ -254,6 +287,7 @@ pub async fn task_amazon_product_fetch_html(app: AppHandle, url: String) -> Resu
             // }
         }
 
+        let _ = toggle_reviews(&tab);
         let html = tab.get_content().unwrap();
 
         page_screenshot(app, &tab, url, &html);

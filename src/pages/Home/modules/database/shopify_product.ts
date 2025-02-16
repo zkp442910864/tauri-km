@@ -31,6 +31,7 @@ export class ShopifyProduct extends CDatabase {
                 amazon_address_url              TEXT,
                 get_choice           NUMERIC NOT NULL
                                         DEFAULT (0),
+                get_review_data              TEXT,
 
                 shopify_product_id              TEXT,
                 shopify_sku_id              TEXT,
@@ -62,6 +63,7 @@ export class ShopifyProduct extends CDatabase {
             'get_content_json',
             'amazon_address_url',
             'get_choice',
+            'get_review_data',
 
             'shopify_product_id',
             'shopify_sku_id',
@@ -105,6 +107,7 @@ export class ShopifyProduct extends CDatabase {
             'get_content_json',
             'amazon_address_url',
             'get_choice',
+            'get_review_data',
 
             'shopify_product_id',
             'shopify_sku_id',
@@ -162,6 +165,7 @@ export class ShopifyProduct extends CDatabase {
             'get_content_json',
             'amazon_address_url',
             'get_choice',
+            'get_review_data',
 
             'shopify_product_id',
             'shopify_sku_id',

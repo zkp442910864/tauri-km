@@ -1,5 +1,5 @@
 import { alphabetical, crush } from 'radash';
-import { IAmazonData, IDetailContentRoot, IOtherData, TParseTypeMsg, TThenData } from '../types/index.type';
+import { IAmazonData, IDetailContentRoot, IOtherData, IReviewData, TParseTypeMsg, TThenData } from '../types/index.type';
 import { LogOrErrorSet } from '@/utils';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -242,6 +242,23 @@ export class Compare {
                 else if (await this.compare_imgs(shopify.sku, 'desc', shopify_val, amazon_val)) {
                     is_update = true;
                     msgs.push('get_content_imgs');
+                }
+            }
+            else if (shopify_item.type === 'get_review_data') {
+                try {
+                    const shopify_json_val = JSON.parse(shopify_item.data as string) as IReviewData;
+                    const amazon_json_val = JSON.parse(amazon_item.data as string) as IReviewData;
+                    // amazon_json_val.img_urls
+
+                    if (this.sort_json(shopify_json_val) !== this.sort_json(amazon_json_val)) {
+                        is_update = true;
+                        msgs.push('get_review_data');
+                    }
+                }
+                catch (error) {
+                    LogOrErrorSet.get_instance().push_log(`json序列化失败: ${LogOrErrorSet.get_instance().save_error({ shopify_item, amazon_item, error, })}`, { error: true, is_fill_row: true, });
+                    is_update = true;
+                    msgs.push('get_review_data.error');
                 }
             }
             else if (shopify_item.type === 'get_content_json') {

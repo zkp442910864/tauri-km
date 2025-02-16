@@ -132,10 +132,14 @@ export class ShopifyAction {
 
                 const info_json = dom.querySelector('#product-info-data')?.textContent;
                 const description_json = dom.querySelector('#product-info-data')?.nextElementSibling?.textContent;
+                const review_data_json = dom.querySelector('#product-info-data')?.nextElementSibling?.nextElementSibling?.textContent;
                 if (info_json) {
                     const data = JSON.parse(info_json) as IShopifyProductData;
                     if (description_json) {
                         data.content_json = JSON.stringify(JSON.parse(description_json));
+                    }
+                    if (review_data_json) {
+                        data.review_data_json = JSON.stringify(JSON.parse(review_data_json));
                     }
                     // this.sku_map[sku].detail = data;
                     [this.sku_map[sku].detail, this.sku_map[sku].detail_map,] = await this.convert_data(data);
@@ -173,9 +177,11 @@ export class ShopifyAction {
         new_data.push(new IHtmlParseData('get_detail', data.detail || ''));
         // new_data.push(new IHtmlParseData('get_features_specs', data.features_specs || ''));
         new_data.push(new IHtmlParseData('get_content_imgs', data.content_imgs || []));
-        new_data.push(new IHtmlParseData('get_content_json', data.content_json || ''));
+        new_data.push(new IHtmlParseData('get_content_json', data.content_json || '{}'));
 
         new_data.push(new IHtmlParseData('get_choice', +data.recommend));
+        new_data.push(new IHtmlParseData('get_review_data', data.review_data_json || '[]'));
+
         new_data.push(new IHtmlParseData('amazon_address_url', data.amazon_address_url || ''));
 
         new_data.push(new IHtmlParseData('shopify_product_id', data.shopify_product_id));

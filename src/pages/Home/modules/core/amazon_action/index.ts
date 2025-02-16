@@ -3,7 +3,7 @@ import { core } from '@tauri-apps/api';
 import { stringify } from 'qs';
 import { alphabetical, parallel, retry, sleep } from 'radash';
 import { TThenData, IAmazonData, IHtmlParseData, TParseData, TParseType } from '../../types/index.type';
-import { get_model, get_detail_v2, get_title, get_banner_imgs, get_price, get_sku_model, get_desc_text, get_content_json, get_choice } from './utils';
+import { get_model, get_detail_v2, get_title, get_banner_imgs, get_price, get_sku_model, get_desc_text, get_content_json, get_choice, get_review_data } from './utils';
 import { GLOBAL_DATA } from '../../global_data';
 
 export class AmazonAction {
@@ -112,6 +112,7 @@ export class AmazonAction {
                 LogOrErrorSet.get_instance().push_log(`获取数据开始: ${fullUrl}`, { repeat: true, });
                 const fail_count = 0;
                 const fn = async () => {
+
                     const res = await retry({ times: this.retry_count, delay: 1000, }, () => core.invoke<string>('task_amazon_product_fetch_html', { url: fullUrl, }));
                     const json_data = JSON.parse(res) as ITauriResponse<string>;
                     if (json_data.status === 0) {
@@ -146,7 +147,6 @@ export class AmazonAction {
                     {
                         const parse_data: Exclude<IAmazonData['detail'], undefined> = [];
                         const [detail_model, detail_data,] = get_detail_v2(dom);
-
                         // 独立属性
                         parse_data.push(new IHtmlParseData('amazon_address_url', fullUrl));
                         parse_data.push(new IHtmlParseData('amazon_product_sku', sku));
@@ -169,6 +169,8 @@ export class AmazonAction {
                         parse_data.push(detail_data);
                         // 商品描述文案
                         parse_data.push(await get_desc_text(dom));
+                        // 商品最新评论
+                        parse_data.push(await get_review_data(dom));
                         // 商品功能与规格
                         // parse_data.push(get_features_specs(dom));
                         // 商品详情内容(图 + 数据json)

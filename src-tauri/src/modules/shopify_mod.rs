@@ -284,6 +284,11 @@ pub async fn task_shopify_store_product_update_item(
                 sleep(Duration::from_millis(100));
                 let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
             },
+            Some(TParseTypeMsg::GetReviewData) => {
+                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(7)").unwrap();
+                quick_adhesive_value(&app, &el, &tab, &data);
+                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+            },
             Some(TParseTypeMsg::GetFeaturesSpecs) => {
                 let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(3)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);

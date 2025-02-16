@@ -30,6 +30,7 @@ export class AmazonProduct extends CDatabase {
                 get_content_json              TEXT,
                 get_choice           NUMERIC NOT NULL
                                         DEFAULT (0),
+                get_review_data              TEXT,
 
                 amazon_first_image           TEXT,
                 amazon_address_url           TEXT,
@@ -57,6 +58,7 @@ export class AmazonProduct extends CDatabase {
             'get_content_imgs',
             'get_content_json',
             'get_choice',
+            'get_review_data',
 
             'amazon_first_image',
             'amazon_address_url',
@@ -90,6 +92,7 @@ export class AmazonProduct extends CDatabase {
             'get_content_imgs',
             'get_content_json',
             'get_choice',
+            'get_review_data',
 
             'amazon_first_image',
             'amazon_address_url',
@@ -143,6 +146,7 @@ export class AmazonProduct extends CDatabase {
             'get_content_imgs',
             'get_content_json',
             'get_choice',
+            'get_review_data',
 
             'amazon_first_image',
             'amazon_address_url',

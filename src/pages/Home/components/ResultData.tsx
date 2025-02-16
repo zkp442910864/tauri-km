@@ -118,6 +118,10 @@ export const ResultData: FC<{result: CompareData[], onClick: (item: unknown) => 
                 content = data.data as string;
                 break;
             }
+            case 'get_review_data': {
+                content = data.data as string;
+                break;
+            }
             case 'get_sku_model':
                 content = data.data as string;
                 break;

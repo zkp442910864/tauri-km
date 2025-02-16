@@ -1,6 +1,6 @@
 
-import { get_real_dom_text, handle_number } from '@/utils';
-import { IHtmlParseData, IDetailContentRoot, IDetailContentData } from '../../types/index.type';
+import { get_real_dom, get_real_dom_text, handle_number } from '@/utils';
+import { IHtmlParseData, IDetailContentRoot, IDetailContentData, IReviewData } from '../../types/index.type';
 
 export const get_model = (dom: Document) => {
     return JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
@@ -79,6 +79,35 @@ export const get_desc_text = async (dom: Document) => {
     }
     catch (error) {
         return new IHtmlParseData('get_desc_text', null, '解析失败', error);
+    }
+};
+
+export const get_review_data = async (dom: Document) => {
+    try {
+        const el = dom.querySelector('#cm-cr-dp-review-list');
+        const html = el?.outerHTML || '';
+        const { divDom, unDiv, } = await get_real_dom(html);
+        const lis = divDom.querySelectorAll<HTMLLIElement>('li');
+        const arr: IReviewData[] = [];
+        [...lis,].forEach((item) => {
+            const data = {
+                name: (item.querySelector<HTMLSpanElement>('.a-profile-name')?.innerText || '').trim(),
+                review: +(item.querySelector<HTMLSpanElement>('.review-rating')?.getAttribute('class')?.match(/a-star-(\d)/)?.[1] || 1),
+                text: (item.querySelector<HTMLDivElement>('.review-text-content')?.innerText || '').trim(),
+                date: (item.querySelector<HTMLSpanElement>('.review-date')?.innerText.split('on')[1] || '').trim(),
+                model: (item.querySelector<HTMLSpanElement>('[data-hook="format-strip-linkless"]')?.innerText || '').trim(),
+                avatar: (item.querySelector<HTMLImageElement>('.a-profile-avatar img')?.src || '').trim(),
+            };
+            if (data.review >= 5) {
+                arr.push(data);
+            }
+        });
+
+        unDiv();
+        return new IHtmlParseData('get_review_data', JSON.stringify(arr));
+    }
+    catch (error) {
+        return new IHtmlParseData('get_review_data', null, '解析失败', error);
     }
 };
 
@@ -265,6 +294,12 @@ export const get_content_json = async (dom: Document) => {
                     await each([...item.children,], row);
                     row.length && pushRow(row, arr);
                 }
+                else if (item.classList.contains('premium-aplus-two-column')) {
+                    const row: IDetailContentData[] = [];
+                    await each([...item.children,], row);
+
+                    row.length && pushRow(row, arr, 'average-width');
+                }
                 else if (item.classList.contains('apm-floatleft') && item.classList.contains('apm-wrap')) {
                     const row: IDetailContentData[] = [];
                     item.querySelector('.apm-leftimage')
@@ -308,6 +343,7 @@ export const get_content_json = async (dom: Document) => {
                     item.classList.contains('apm-flex-item-third-width') ||
                     item.classList.contains('apm-flex-item-fourth-width') ||
                     item.classList.contains('apm-hovermodule-slides-inner') ||
+                    item.classList.contains('premium-aplus-column') ||
                     item.classList.contains('apm-rightthirdcol')
                 ) {
                     const columns: IDetailContentData[] = [];

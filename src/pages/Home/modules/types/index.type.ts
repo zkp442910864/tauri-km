@@ -21,10 +21,11 @@ type TParseType =
     'get_content_json' |
     'get_sku_model' |
     'get_choice' |
+    'get_review_data' |
 
     'get_banner_imgs' |
     'get_content_imgs';
-type TParseTypeMsg = TParseType | 'get_price.no_price' | 'get_content_json.error';
+type TParseTypeMsg = TParseType | 'get_price.no_price' | 'get_content_json.error' | 'get_review_data.error';
 type TParseData = IHtmlParseData<IOtherData | string | string[] | null | number | undefined | boolean>;
 
 // ~~~~~~~~~~~~~~~~~~~~~~
@@ -50,6 +51,7 @@ interface IShopifyProductData {
     features_specs?: string | null;
     content_imgs?: string[] | null;
     content_json?: string | null;
+    review_data_json?: string | null;
     shopify_product_id: number,
     shopify_sku_id?: number,
     relevance_tag?: string,
@@ -123,6 +125,21 @@ interface IConfig {
     };
 }
 
+interface IReviewData {
+    /** 名称 */
+    name: string;
+    /** 评价星数 */
+    review: number;
+    /** 评价文案 */
+    text: string;
+    /** 评价时间 */
+    date: string;
+    /** 产品类型 */
+    model: string;
+    /** 头像 */
+    avatar: string;
+}
+
 export type {
     IDetailContentRoot,
     IDetailContentData,
@@ -134,5 +151,6 @@ export type {
     TParseData,
     IOtherData,
     TParseTypeMsg,
-    IConfig
+    IConfig,
+    IReviewData
 };
