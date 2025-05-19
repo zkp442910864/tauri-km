@@ -46,6 +46,10 @@ export const get_price = (dom: Document) => {
     dom.querySelectorAll<HTMLSpanElement>('#apex_desktop .aok-offscreen')?.forEach((item, index) => {
         if (index === 0) {
             price = handle_number(item.innerText.trim().match(/\$([\d.]+)\s?/)?.[1] ?? -1);
+            /** 小于10的+2处理 */
+            if (price <= 10) {
+                price = price + 2;
+            }
         }
         else if (index === 1) {
             old_price = handle_number(item.innerText.trim().match(/\$([\d.]+)\s?/)?.[1] ?? -1);

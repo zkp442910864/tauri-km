@@ -5,6 +5,7 @@ import { alphabetical, parallel, retry, sleep } from 'radash';
 import { TThenData, IAmazonData, IHtmlParseData, TParseData, TParseType } from '../../types/index.type';
 import { get_model, get_detail_v2, get_title, get_banner_imgs, get_price, get_sku_model, get_desc_text, get_content_json, get_choice, get_review_data } from './utils';
 import { GLOBAL_DATA } from '../../global_data';
+import { table } from '../../database';
 
 export class AmazonAction {
     // https://www.amazon.com/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5
@@ -94,6 +95,12 @@ export class AmazonAction {
                 return;
             }
         }
+
+        // 补充一些遗漏的
+        const { sku_map: db_sku_map, } = await table.shopify_product.get_data();
+        Object.keys(db_sku_map).forEach((sku) => {
+            this.push_sku(sku, sku_data, sku_map);
+        });
 
         LogOrErrorSet.get_instance().push_log(`亚马逊分类处理完成,总条数${sku_data.length}`, { repeat: true, });
 
