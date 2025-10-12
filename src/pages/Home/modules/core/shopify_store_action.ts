@@ -71,14 +71,17 @@ export class ShopifyStoreAction {
                     // 获取不到,就不通过
                     return invoke<string>('task_shopify_store_login_status', { url: this.store_url, tabId: login_json.data, }).then((res) => {
                         const json = JSON.parse(res) as ITauriResponse<string>;
-                        if (json.data) {
-                            ShopifyStoreAction.is_login_status = true;
-                            ShopifyStoreAction.store_cookie = json.data!;
-                            rel(true);
-                        }
-                        else {
-                            rej(new Error('登录失败.1'));
-                        }
+                        ShopifyStoreAction.is_login_status = true;
+                        ShopifyStoreAction.store_cookie = json.data!;
+                        rel(true);
+                        // if (json.data) {
+                        //     ShopifyStoreAction.is_login_status = true;
+                        //     ShopifyStoreAction.store_cookie = json.data!;
+                        //     rel(true);
+                        // }
+                        // else {
+                        //     rej(new Error('登录失败.1'));
+                        // }
                     });
                 },
                 onCancel: () => {

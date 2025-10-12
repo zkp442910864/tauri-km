@@ -34,6 +34,14 @@ pub async fn task_shopify_store_login(app: AppHandle, url: String) -> Result<Str
             .get("koa_sig_val")
             .and_then(|v| v.as_str().map(String::from))
             .unwrap_or_default();
+        let _merchant_essential = store
+            .get("_merchant_essential")
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or_default();
+        let _shopify_essential_ = store
+            .get("_shopify_essential_")
+            .and_then(|v| v.as_str().map(String::from))
+            .unwrap_or_default();
 
         let _ = tab
             .set_cookies(vec![
@@ -58,6 +66,38 @@ pub async fn task_shopify_store_login(app: AppHandle, url: String) -> Result<Str
                     url: None,
                     name: "koa.sid.sig".to_string(),
                     value: koa_sig_val,
+                    expires: None,
+                    http_only: Some(true),
+                    partition_key: None,
+                    path: Some("/".to_string()),
+                    priority: Some(CookiePriority::Medium),
+                    same_party: None,
+                    same_site: Some(CookieSameSite::Lax),
+                    secure: Some(true),
+                    source_port: None,
+                    source_scheme: None,
+                },
+                CookieParam {
+                    domain: Some("admin.shopify.com".to_string()),
+                    url: None,
+                    name: "_merchant_essential".to_string(),
+                    value: _merchant_essential,
+                    expires: None,
+                    http_only: Some(true),
+                    partition_key: None,
+                    path: Some("/".to_string()),
+                    priority: Some(CookiePriority::Medium),
+                    same_party: None,
+                    same_site: Some(CookieSameSite::Lax),
+                    secure: Some(true),
+                    source_port: None,
+                    source_scheme: None,
+                },
+                CookieParam {
+                    domain: Some("admin.shopify.com".to_string()),
+                    url: None,
+                    name: "_shopify_essential_".to_string(),
+                    value: _shopify_essential_,
                     expires: None,
                     http_only: Some(true),
                     partition_key: None,
@@ -102,11 +142,14 @@ pub async fn task_shopify_store_login_status(
         let mut cookies = cookies_warp.iter();
         let koa_sig = cookies.find(|ii| ii.name == "koa.sid.sig");
         let koa = cookies.find(|ii| ii.name == "koa.sid");
+        let _merchant_essential = cookies.find(|ii| ii.name == "_merchant_essential");
+        let _shopify_essential_ = cookies.find(|ii| ii.name == "_shopify_essential_");
 
+        println!("Log::::cookies::::before in");
         // println!("Log::::cookies::::{:?}", koa);
         // println!("Log::::cookies::::{:?}", koa_sig);
         // stores.insert("koa", koa);
-        let flag = match (koa, koa_sig) {
+        let mut flag = match (koa, koa_sig) {
             (Some(koa_val), Some(koa_sig_val)) => {
                 store.set("koa_val", json!(koa_val.value));
                 store.set("koa_sig_val", json!(koa_sig_val.value));
@@ -114,6 +157,22 @@ pub async fn task_shopify_store_login_status(
             }
             _ => false,
         };
+        if flag {
+            println!("Log::::cookies:::loginSuccess");
+            flag = match (_merchant_essential, _shopify_essential_) {
+                (Some(_merchant_essential_val), Some(_shopify_essential_val)) => {
+                    println!("Log::::cookies:::need data Ok?");
+
+                    store.set("_merchant_essential", json!(_merchant_essential_val.value));
+                    store.set("_shopify_essential", json!(_shopify_essential_val.value));
+                    true
+                }
+                _ => {
+                    println!("Log::::cookies:::need data fail");
+                    true
+                },
+            };
+        }
         // let flag = cookies.find(|ii| match ii.name.find("koa.sid") {
         //     Some(_) => true,
         //     None => false,
@@ -192,6 +251,9 @@ pub async fn task_shopify_store_product_update_item(
                     let (inline_tab, _) = start_browser(&v_url).unwrap();
 
                     confirm_loading(&inline_tab, true, Some("input[name=price]"));
+
+                    let move_el = inline_tab.find_element(".Polaris-InlineStack>.Polaris-Box>button[type=\"button\"]").unwrap();
+                    let _ = move_el.click();
 
                     let price_el = inline_tab.find_element("input[name=price]").unwrap();
                     quick_adhesive_value(&app, &price_el, &inline_tab, price);
@@ -295,6 +357,7 @@ pub async fn task_shopify_store_product_update_item(
                 let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetContentJson) => {
+                let _ = tab.find_element("#pinned-metafields-anchor>div.Polaris-Card>div>div>div>.Polaris-Text--root").unwrap().click();
                 let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(5)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
                 let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
@@ -310,23 +373,29 @@ pub async fn task_shopify_store_product_update_item(
                 let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetSkuModel) => {
-                let el = tab.find_element("._Header_1eydo_1").unwrap();
-                let _ = el.click();
+                let _ = tab.find_element("form>div>div>div:nth-child(2)>div>div>div>div").unwrap().click();
                 sleep(Duration::from_millis(1000));
-                let metadata_btn_warp = tab.find_element("._Header_1eydo_1 button");
-                if let Ok(_) = metadata_btn_warp {
-                    each_tab_do(&tab, 5);
-                }
-                else {
-                    each_tab_do(&tab, 3);
-                }
+
+                // let el = tab.find_element("._Header_1eydo_1").unwrap();
+                // let _ = el.click();
+                // sleep(Duration::from_millis(1000));
+                // let metadata_btn_warp = tab.find_element("._Header_1eydo_1 button");
+                // if let Ok(_) = metadata_btn_warp {
+                //     each_tab_do(&tab, 5);
+                // }
+                // else {
+                //     each_tab_do(&tab, 3);
+                // }
+                each_tab_do(&tab, 5);
                 let _ = app.clipboard().write_text(data);
                 let _ = tab.press_key_with_modifiers("v", Some(&[ModifierKey::Ctrl]));
-                each_tab_do(&tab, 3);
-                sleep(Duration::from_millis(500));
+                // each_tab_do(&tab, 3);
+                // sleep(Duration::from_millis(500));
                 let _ = tab.press_key("Enter");
             }
             Some(TParseTypeMsg::GetSkuModelAdd) => {
+                let _ = tab.find_element("form>div>div>div:nth-child(2)>div>div>div>div").unwrap().click();
+                sleep(Duration::from_millis(1000));
                 let el = tab.find_element("button[aria-haspopup=listbox]").unwrap();
 
                 let _ = app.clipboard().write_text(data);
@@ -401,6 +470,10 @@ pub async fn task_shopify_store_product_update_item(
                     sleep(Duration::from_millis(1000));
                     let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
                 }
+                else {
+                    let _ = tab.find_element("div[role=dialog] .Polaris-Modal-Footer button.Polaris-Button--variantSecondary").unwrap().click();
+                    sleep(Duration::from_millis(1000));
+                }
 
             }
             // Some(TParseTypeMsg::GetSkuModel) => {},
@@ -432,8 +505,10 @@ fn page_upload_imgs(app: &AppHandle, el: &Element<'_>, sku: &str, folder_type: &
             img_path.to_string_lossy().to_string()
         })
         .collect();
-    let url_refs: Vec<&str> = urls.iter().map(|s| s.as_str()).collect();
-    let _ = el.set_input_files(&url_refs);
+    if urls.len() > 0 {
+        let url_refs: Vec<&str> = urls.iter().map(|s| s.as_str()).collect();
+        let _ = el.set_input_files(&url_refs);
+    }
     urls.len()
 }
 
