@@ -5,7 +5,7 @@
     "identifier": "com.tauri.tauri-km",
     "build": {
         "frontendDist": "../build",
-        "devUrl": "http://localhost:5231",
+        "devUrl": "http://localhost:6001",
         "beforeDevCommand": "pnpm dev",
         "beforeBuildCommand": "pnpm build"
     },

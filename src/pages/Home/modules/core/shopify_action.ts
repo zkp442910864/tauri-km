@@ -121,12 +121,13 @@ export class ShopifyAction {
 
         const skus = this.sku_data.map(ii => ii.sku);
         await parallel(3, skus, async (sku) => {
-            const fullUrl = `${url}/${sku}`;
+            const fullUrl = `${url}/${sku}?v=${Date.now()}`;
 
             try {
                 LogOrErrorSet.get_instance().push_log(`获取数据开始: ${fullUrl}`, { repeat: true, });
-                const res = await retry({ times: 3, delay: 1000, }, () => fetch(fullUrl));
+                const res = await retry({ times: 3, delay: 1000, }, () => window.fetch(fullUrl));
                 const html = await res.text();
+                // debugger;
                 const domParser = new DOMParser();
                 const dom = domParser.parseFromString(html, 'text/html');
 

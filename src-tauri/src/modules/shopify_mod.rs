@@ -203,7 +203,7 @@ pub async fn task_shopify_store_product_open(url: String) -> Result<String, Stri
         confirm_loading(
             &tab,
             true,
-            Some("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(1)"),
+            Some("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(2)>div>div:nth-child(1)"),
         );
         confirm_loading(&tab, false, None);
 
@@ -236,7 +236,7 @@ pub async fn task_shopify_store_product_update_item(
                 quick_adhesive_value(&app, &el, &tab, &data);
             }
             Some(TParseTypeMsg::GetDescText) => {
-                let el = tab.find_element("#richtexteditor_toolbar-product-description div[class^=_AdditionalActionsContainer] button").unwrap();
+                let el = tab.find_element("div[id^=richtexteditor_toolbar-product-description] div[class^=_AdditionalActionsContainer] button").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
                 let _ = el.click();
             }
@@ -326,12 +326,12 @@ pub async fn task_shopify_store_product_update_item(
                 });
             }
             Some(TParseTypeMsg::GetDetail) => {
-                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(2)").unwrap();
+                let el = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(2)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetChoice) => {
-                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(6)").unwrap();
+                let el = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(6)").unwrap();
                 let _ = el.click();
                 sleep(Duration::from_millis(100));
 
@@ -344,33 +344,34 @@ pub async fn task_shopify_store_product_update_item(
                     let _ = tab.press_key("ArrowDown");
                 }
                 sleep(Duration::from_millis(100));
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetReviewData) => {
-                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(7)").unwrap();
+                let el = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(7)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetFeaturesSpecs) => {
-                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(3)").unwrap();
+                let el = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(2)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetContentJson) => {
-                let _ = tab.find_element("#pinned-metafields-anchor>div.Polaris-Card>div>div>div>.Polaris-Text--root").unwrap().click();
-                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(5)").unwrap();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
+                // let _ = tab.find_element("#pinned-metafields-anchor>div.Polaris-Card>div>div>div>.Polaris-Text--root").unwrap().click();
+                let el = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(5)").unwrap();
                 quick_adhesive_value(&app, &el, &tab, &data);
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
             },
             Some(TParseTypeMsg::AmazonAddressUrl) => {
-                let el = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(1)").unwrap();
+                let el = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(1)").unwrap();
                 let _ = app.clipboard().write_text(data);
                 let _ = el.click();
                 sleep(Duration::from_millis(500));
                 let _ = tab.press_key("Tab");
                 let _ = tab.press_key_with_modifiers("v", Some(&[ModifierKey::Ctrl]));
                 sleep(Duration::from_millis(500));
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
             },
             Some(TParseTypeMsg::GetSkuModel) => {
                 let _ = tab.find_element("form>div>div>div:nth-child(2)>div>div>div>div").unwrap().click();
@@ -445,7 +446,7 @@ pub async fn task_shopify_store_product_update_item(
                 }
             }
             Some(TParseTypeMsg::GetContentImgs) => {
-                let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(2)>div>div:nth-child(4)").unwrap().click();
+                let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>div>div:nth-child(4)").unwrap().click();
                 sleep(Duration::from_millis(1000));
                 // let _ = tab.press_key("Enter");
 
@@ -468,7 +469,7 @@ pub async fn task_shopify_store_product_update_item(
                     sleep(Duration::from_millis(1000));
                     let _ = tab.find_element("div[role=dialog] .Polaris-Modal-Footer button.Polaris-Button--variantPrimary").unwrap().click();
                     sleep(Duration::from_millis(1000));
-                    let _ = tab.find_element("#pinned-metafields-anchor>div>div>div>div:nth-child(1)>h2").unwrap().click();
+                    let _ = tab.find_element("#pinned-metafields-anchor>s-section>div>div>h2").unwrap().click();
                 }
                 else {
                     let _ = tab.find_element("div[role=dialog] .Polaris-Modal-Footer button.Polaris-Button--variantSecondary").unwrap().click();
