@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+/// 推送日志到前端（当前仅序列化，待实现前端通信）
 pub fn push_web_log(data: WebLog) {
     let json = serde_json::to_string(&data);
     if let Ok(val) = json {
@@ -7,6 +8,9 @@ pub fn push_web_log(data: WebLog) {
     }
 }
 
+/// Web 日志数据结构 —— 用于将 Rust 端日志推送到前端显示。
+///
+/// 支持普通日志、标题日志、错误日志三种类型。
 #[derive(Serialize)]
 pub struct WebLog<'a> {
     msg: &'a str,

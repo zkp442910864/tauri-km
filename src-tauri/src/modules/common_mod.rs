@@ -24,6 +24,8 @@ use tauri_plugin_http::reqwest;
 use template_matching::{find_extremes, Extremes, Image, MatchTemplateMethod, TemplateMatcher};
 use tokio::task::spawn_blocking;
 
+// 全局 headless_chrome 浏览器实例（懒加载单例）。
+// 配置：非无头模式（headless: false）、启用 GPU、1 小时空闲超时。
 lazy_static! {
     pub static ref MY_BROWSER: Browser = Browser::new(LaunchOptions {
         headless: false,
@@ -47,10 +49,22 @@ lazy_static! {
         proxy_server: None,
     })
     .unwrap();
+}
+// 浏览器实例状态标记（全局单例）。
+// 用于跟踪 headless_chrome 是否正在使用中。
+lazy_static! {
     pub static ref MY_BROWSER_STATUS: Mutex<BrowserStatus> = Mutex::new(BrowserStatus::new());
 }
 
-/** 启动浏览器 */
+/// 启动浏览器并导航到指定 URL。
+///
+/// 流程：获取全局浏览器实例 → 创建新 Tab → 导航到目标 URL → 等待加载完成。
+///
+/// # 参数
+/// - `url`: 目标页面 URL
+///
+/// # 返回
+/// `(Arc<Tab>, &Browser)` 元组，Tab 用于后续 DOM 操作。
 pub fn start_browser(url: &str) -> Result<(Arc<Tab>, &Browser), String> {
     push_web_log(WebLog::new_default("启动浏览器"));
 
@@ -75,7 +89,9 @@ pub fn start_browser(url: &str) -> Result<(Arc<Tab>, &Browser), String> {
     Ok((tab, browser))
 }
 
-/** 创建文件夹 */
+/// 在桌面创建 `km-temp` 子文件夹，返回完整路径。
+///
+/// 所有临时文件（截图、下载图片等）都存放在 `~/Desktop/km-temp/` 下。
 pub fn create_folder(app: AppHandle, url: String) -> String {
     let root_folder = "km-temp";
     let desktop_dir = app.path().desktop_dir().unwrap();
@@ -85,14 +101,21 @@ pub fn create_folder(app: AppHandle, url: String) -> String {
     file_path.to_string_lossy().to_string()
 }
 
-/** 提供web使用: 创建文件夹 */
+/// Tauri 命令：创建文件夹（供前端调用）。
 #[command]
 pub fn task_create_folder(app: AppHandle, url: String) -> Result<String, String> {
     let result = create_folder(app, url);
     Response::new_result(1, Some(result), None)
 }
 
-/** 下载图片 */
+/// Tauri 命令：批量下载图片到本地。
+///
+/// 在 `km-temp/<sku>/<folder_type>/` 目录下按序号保存 PNG 文件。
+///
+/// # 参数
+/// - `sku`: 产品 SKU
+/// - `folder_type`: 图片分类（如 `banner`、`detail`）
+/// - `urls`: 图片 URL 列表
 #[command]
 pub async fn task_download_imgs(
     app: AppHandle,
@@ -131,6 +154,9 @@ pub async fn task_download_imgs(
     }
 }
 
+/// 从 URL 下载图片并转换为模板匹配所需的 `Image` 格式。
+///
+/// 返回 `(Image, Vec<u8>)` 元组，Image 用于模板匹配，Vec<u8> 为原始字节。
 pub fn get_image_v2(url: &str) -> (Image<'_>, Vec<u8>) {
     let response = blocking::get(url).unwrap();
     let val_vec = response.bytes().unwrap().to_vec();
@@ -142,6 +168,7 @@ pub fn get_image_v2(url: &str) -> (Image<'_>, Vec<u8>) {
     (match_img, val_vec)
 }
 
+/// 将图片字节数据转换为灰度浮点 `Image`（用于模板匹配算法）。
 pub fn v8_to_img(val: Vec<u8>) -> Image<'static> {
     let img = load_from_memory(&val).unwrap().to_luma32f();
     let width = img.width();
@@ -151,7 +178,9 @@ pub fn v8_to_img(val: Vec<u8>) -> Image<'static> {
     Image::new(img_f32_owned, width, height)
 }
 
-/** 页面快照 */
+/// 保存页面快照（HTML + 截图）到 `km-temp/page-content/` 目录。
+///
+/// 用于调试和问题排查，保存页面的 HTML 源码和 JPEG 截图。
 pub fn page_screenshot(app: AppHandle, tab: &Arc<Tab>, url: String, html: &String) {
     let path_url = create_folder(app, "page-content".to_string());
     let file_html_name = format!(
@@ -183,7 +212,10 @@ pub fn page_screenshot(app: AppHandle, tab: &Arc<Tab>, url: String, html: &Strin
     let _ = fs::write(save_img_path, screenshot);
 }
 
-/** 页面快照,x秒内 */
+/// Tauri 命令：持续截图 —— 在指定时间内每秒截取页面快照。
+///
+/// 用于观察页面动态加载过程（如反爬验证页面）。
+/// 截图保存到 `km-temp/page_sustain_screenshot/` 目录。
 #[command]
 pub async fn page_sustain_screenshot(app: AppHandle, url: String) -> Result<String, String> {
     let path_url = create_folder(app, "page_sustain_screenshot".to_string());
@@ -231,7 +263,9 @@ pub async fn page_sustain_screenshot(app: AppHandle, url: String) -> Result<Stri
     Response::<String>::new_result(1, None, None)
 }
 
-/** 点击页面某个点 */
+/// 通过 CSS 选择器定位元素并点击其中心坐标。
+///
+/// 使用 `getBoundingClientRect` 获取元素位置，偏移 +10px 确保点击在元素内部。
 pub fn click_point(tab: &Arc<Tab>, selector: &str) {
     let point_web = tab
         .evaluate(

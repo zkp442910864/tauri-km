@@ -5,6 +5,16 @@ import { createRoot } from 'react-dom/client';
 import { table } from '../modules/database';
 import { open } from '@tauri-apps/plugin-shell';
 
+/**
+ * Amazon 精选产品展示组件 —— 从数据库读取精选产品数据并以卡片网格展示。
+ *
+ * 功能：
+ * - 展示产品图片、标题、型号、SKU
+ * - 点击卡片右下角图标可跳转到 Amazon 产品页面
+ * - 支持文本复制
+ *
+ * 通过 `amazon_choice_fn` 导出的函数可从外部以独立窗口打开此组件。
+ */
 const AmazonChoice = () => {
 
     const [result, set_result,] = useStateExtend<Awaited<ReturnType<typeof table.amazon_product.get_choice_data>>>([]);

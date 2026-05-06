@@ -5,6 +5,18 @@ import classNames from 'classnames';
 import { FC, useRef } from 'react';
 
 const log_or_error = LogOrErrorSet.get_instance();
+
+/**
+ * 数据追踪查询组件 —— 通过 key 查找 LogOrErrorSet 中的 error_map 或 data_map。
+ *
+ * 用于调试时快速定位错误或数据快照：
+ * - 选择查询类型（error_map / data_map）
+ * - 输入 key（如 `error-1234567`）
+ * - 点击搜索后将结果传递给 `onClick` 回调（通常用于 RenderCode 展示）
+ *
+ * @param onClick - 查询结果回调
+ * @param className - 可选的额外 CSS 类名
+ */
 export const DataQuery: FC<{className?: string, onClick: (data: unknown) => void}> = ({
     onClick,
     className = '',

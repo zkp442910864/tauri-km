@@ -2,6 +2,23 @@ import { invoke } from '@tauri-apps/api/core';
 import { LogOrErrorSet } from '@/utils';
 import { GLOBAL_DATA } from '../global_data';
 
+/**
+ * Shopify Admin GraphQL API 封装（单例）。
+ *
+ * 通过 Tauri `invoke` 调用 Rust 端的 `take_graphql_client` 命令发送 GraphQL 请求。
+ * 自动注入当前店铺的 access_token、api_version、store_domain 配置。
+ *
+ * 主要方法：
+ * - `get_data<T>` —— 通用 GraphQL 查询
+ * - `get_all_product` —— 分页获取所有活跃产品（SKU + variant ID）
+ * - `get_inventory_detail` —— 根据变体 ID 获取库存信息
+ *
+ * @example
+ * ```ts
+ * const api = shopify_admin_api;
+ * const { data } = await api.get_all_product();
+ * ```
+ */
 class ShopifyAdminApi {
     static instance: ShopifyAdminApi;
 

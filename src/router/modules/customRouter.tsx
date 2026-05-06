@@ -4,6 +4,25 @@ import { lazy, Suspense } from 'react';
 import App from '@/App';
 import { ICustomRouteObject, ServerDataModel } from '../index.type';
 
+/**
+ * 自定义路由管理器（单例）。
+ *
+ * 核心职责：
+ * - 自动扫描 `src/pages/**\/index.tsx` 生成本地路由（基于 Vite `import.meta.glob`）
+ * - 支持服务端动态路由数据注入
+ * - 构建 Hash Router，包含 KeepAlive 缓存层和错误边界
+ * - 维护 `routerPageMap` 路由映射表，供 `useRouter` 快速查找
+ *
+ * 路由层级结构：
+ * ```text
+ * App
+ * └── LayoutRoot (布局容器)
+ *     └── KeepAliveRoot (页面缓存层)
+ *         ├── /Home → pages/Home/index.tsx
+ *         ├── /Other → pages/Other/index.tsx
+ *         └── * → NoFindPage (404)
+ * ```
+ */
 export class CustomRouter {
     private static instance: CustomRouter;
 

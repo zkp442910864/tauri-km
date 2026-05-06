@@ -3,6 +3,13 @@ import { IAmazonData, IHtmlParseData, IOtherData, IShopifyData, TParseData, TPar
 import { CDatabase, db } from './base';
 import dayjs from 'dayjs';
 
+/**
+ * Shopify 产品数据表操作类（单例）。
+ *
+ * 表名：`shopify_product`，主键为 `sku`。
+ * 存储从 Shopify 前台页面采集的产品数据，以及 GraphQL API 获取的库存信息。
+ * 额外字段：`shopify_product_id`、`shopify_sku_id`、`shopify_inventory` 等。
+ */
 export class ShopifyProduct extends CDatabase {
     static instance: ShopifyProduct;
     table_name = 'shopify_product';

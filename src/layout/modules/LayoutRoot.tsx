@@ -1,5 +1,12 @@
 import { Outlet } from 'react-router';
 
+/**
+ * 应用布局根组件。
+ *
+ * 作为路由树的中间层，提供统一的布局容器。
+ * 当前仅渲染 `<Outlet />`（子路由出口），预留了导航栏等扩展位置。
+ * 通过 UnoCSS 原子类名控制布局样式。
+ */
 export const LayoutRoot = () => {
 
     return (

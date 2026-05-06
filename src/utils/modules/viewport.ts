@@ -1,4 +1,15 @@
 
+type AppType = 'weChat' | 'weCom' | 'qq' | 'unknown';
+type DeviceType = 'android' | 'iphone' | 'ipad' | 'win' | 'macOS' | 'linux' | 'unknown';
+
+/**
+ * 创建并设置 viewport meta 标签。
+ *
+ * - 移动端（android/iphone）：设置缩放比例为 `1/devicePixelRatio`，并调用 `setHtmlFontSize` 设置 rem 基准
+ * - 桌面端：使用标准 viewport 配置
+ *
+ * @param type - 设备类型，由 `getDevice()` 返回
+ */
 export const createViewport = (type: DeviceType) => {
     // <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     document.querySelector('[name="viewport"]')?.remove();
@@ -22,6 +33,23 @@ export const createViewport = (type: DeviceType) => {
     document.head.appendChild(dom);
 };
 
+/**
+ * 检测当前设备类型和应用环境。
+ *
+ * 通过 `navigator.userAgent` 和 `navigator.platform` 判断：
+ * - 应用类型：微信 / 企业微信 / QQ / unknown
+ * - 设备类型：iPhone / iPad / Android / Windows / macOS / Linux / unknown
+ *
+ * @returns `[AppType, DeviceType]` 元组
+ *
+ * @example
+ * ```ts
+ * const [app, device] = getDevice();
+ * if (device === 'iphone' || device === 'android') {
+ *   createViewport(device);
+ * }
+ * ```
+ */
 /** 获取设备类型 */
 export const getDevice = () => {
     const userAgent = navigator.userAgent.toLowerCase();

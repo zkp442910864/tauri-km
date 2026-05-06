@@ -10,6 +10,19 @@ use std::time::Duration;
 use tauri::{async_runtime::spawn, Manager};
 use tokio::{runtime::Runtime, task::spawn_blocking};
 
+/// Tauri 应用入口 —— 注册所有插件和命令。
+///
+/// 插件列表：
+/// - `window_state` —— 窗口状态持久化
+/// - `dialog` —— 文件选择对话框
+/// - `sql` —— SQLite 数据库
+/// - `store` —— KV 持久化存储
+/// - `clipboard_manager` —— 剪贴板操作
+/// - `fs` —— 文件系统操作
+/// - `shell` —— 外部链接打开
+/// - `http` —— HTTP 请求
+///
+/// 注册的 Tauri 命令见 `invoke_handler` 宏调用。
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 
 pub fn run() {
@@ -77,7 +90,9 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/** 浏览器保持活动状态 */
+/// 浏览器保活 —— 定期创建并关闭 Tab，防止浏览器实例因空闲超时被回收。
+///
+/// 每 6 秒（3 秒创建 + 3 秒等待）执行一次空操作。
 pub fn browser_keep_alive() {
     println!("Log::::start::::browser_keep_alive");
 

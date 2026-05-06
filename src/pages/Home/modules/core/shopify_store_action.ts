@@ -6,6 +6,23 @@ import { LogOrErrorSet } from '@/utils';
 import { table } from '../database';
 import { ShopifyAction } from './shopify_action';
 
+/**
+ * Shopify 后台自动化操作器 —— 通过 headless_chrome 模拟后台操作。
+ *
+ * 核心职责：
+ * - 登录验证（`has_login_status`）：调用 Rust 端打开 Shopify 后台登录页，用户确认后获取 cookie
+ * - 产品编辑（`auto_update`）：打开已有产品页，逐字段修改（标题、价格、图片等）
+ * - 产品新增（`auto_add`）：打开新产品页，逐字段填写
+ * - 操作完成后自动刷新本地数据库中的 Shopify 产品数据
+ *
+ * 所有 DOM 操作通过 Tauri `invoke` 调用 Rust 端的 `task_shopify_store_*` 命令执行。
+ *
+ * @example
+ * ```ts
+ * const action = new ShopifyStoreAction('https://store.myshopify.com');
+ * await action.auto_update(compareData); // 自动更新产品
+ * ```
+ */
 export class ShopifyStoreAction {
     static is_login_status = false;
     static store_cookie = '';

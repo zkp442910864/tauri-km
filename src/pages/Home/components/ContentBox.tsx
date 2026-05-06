@@ -1,6 +1,15 @@
 import { useDebounceEffect, useStateExtend } from '@/hooks';
 import { FC, ReactNode, useRef } from 'react';
 
+/**
+ * 内容区域容器组件 —— 自动计算可用高度，撑满视口。
+ *
+ * 通过 `getBoundingClientRect().top` 计算组件顶部偏移，
+ * 使用 `calc(100vh - top)` 设置高度，确保内容区域不超出视口。
+ * 内边距默认 20px。
+ *
+ * @param children - 子内容
+ */
 export const ContentBox: FC<{children: ReactNode}> = ({ children, }) => {
 
     const [, update,] = useStateExtend({});

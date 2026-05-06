@@ -1,3 +1,12 @@
+//! Amazon 域 Tauri 命令模块 —— 通过 headless_chrome 抓取 Amazon 产品数据。
+//!
+//! 提供以下 Tauri 命令：
+//! - `task_find_amazon_sku` —— 从品牌集合页面采集 SKU 列表
+//! - `task_amazon_product_fetch_html` —— 抓取单个产品详情页 HTML
+//! - `task_amazon_product_img_diff` —— 下载产品图片并进行模板匹配比对
+//!
+//! 核心流程：打开 Amazon 页面 → 滚动加载 → 提取 SKU → 抓取详情 → 解析 HTML
+
 use futures::future::join_all;
 use futures::{stream, StreamExt, TryFutureExt};
 use reqwest::{Client, Error};
@@ -23,11 +32,17 @@ use super::{
     other_model::Response,
 };
 
-/**
- * 获取亚马逊产品列表
- *  [...document.querySelectorAll('button')].find(ii => ii.innerText === 'Show more').click()
- *  document.querySelector('.Loading__loading__wrapper__ysimX>img')
- */
+/// Tauri 命令：从 Amazon 品牌集合页面采集 SKU 列表。
+///
+/// 流程：
+/// 1. 打开品牌集合页面
+/// 2. 循环点击 "Show more" 按钮加载更多产品
+/// 3. 等待 loading 指示器消失
+/// 4. 提取所有产品卡片中的 SKU（ASIN）
+/// 5. 返回去重后的 SKU 数组
+///
+/// # 参数
+/// - `url`: Amazon 品牌集合页面 URL
 #[command]
 pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
     // 加载更多,有就触发
@@ -138,7 +153,18 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
     }
 }
 
-/** 获取亚马逊产品详情html */
+/// Tauri 命令：抓取 Amazon 产品详情页 HTML。
+///
+/// 流程：
+/// 1. 打开产品详情页
+/// 2. 滚动页面加载所有内容（等待规格展开按钮出现）
+/// 3. 检测是否遇到反爬验证页面
+/// 4. 保存页面快照（HTML + 截图）
+/// 5. 返回完整 HTML 字符串
+///
+/// # 参数
+/// - `app`: Tauri 应用句柄（用于文件路径）
+/// - `url`: Amazon 产品详情页 URL
 #[command]
 pub async fn task_amazon_product_fetch_html(app: AppHandle, url: String) -> Result<String, String> {
     let find_assign_dom = |tab: &Arc<Tab>| {
@@ -312,7 +338,16 @@ pub async fn task_amazon_product_fetch_html(app: AppHandle, url: String) -> Resu
     }
 }
 
-/** 比对两组图片是存在差异 */
+/// Tauri 命令：比对两组图片是否存在差异（模板匹配算法）。
+///
+/// 将 Shopify 和 Amazon 的图片两两进行模板匹配，计算 SSD（平方差之和）值。
+/// SSD 越小表示图片越相似。
+///
+/// # 参数
+/// - `sku`: 产品 SKU
+/// - `folder_type`: 图片分类
+/// - `shopify_urls`: Shopify 图片 URL 列表
+/// - `amazon_urls`: Amazon 图片 URL 列表
 #[command]
 pub async fn task_amazon_images_diff(
     app: AppHandle,
@@ -377,6 +412,10 @@ pub async fn task_amazon_images_diff(
     }
 }
 
+/// Tauri 命令：图片比对 V2 —— 并发下载 + 模板匹配。
+///
+/// 与 `task_amazon_images_diff` 功能相同，但使用 `reqwest` 并发下载图片，
+/// 性能更优（适合多图场景）。
 #[command]
 pub async fn task_amazon_images_diff_v2(
     app: AppHandle,
@@ -494,12 +533,14 @@ pub async fn task_amazon_images_diff_v2(
     }
 }
 
+/// 图片下载响应包装 —— 包含 URL 和下载的字节数据。
 #[derive(Debug, serde::Serialize)]
 struct ImgResponse<T> {
     url: String,
     result: T,
 }
 
+/// 图片比对结果 —— 记录单对图片的比对状态和下载数据。
 struct ComparisonResult {
     index: usize,
     shopify_url: String,

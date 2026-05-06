@@ -9,6 +9,21 @@ import { useDebounceEffect, useStateExtend } from '@/hooks';
 import { ShopifyStoreAction } from '../modules/core/shopify_store_action';
 import { GLOBAL_DATA } from '../modules/global_data';
 
+/**
+ * 比对结果展示组件 —— 以列表形式展示 Compare 比对引擎的输出。
+ *
+ * 功能：
+ * - 按类型（add/update/remove/fit/warn）以不同颜色 Tag 标识
+ * - 点击 SKU 可跳转到 Amazon / Shopify 前台 / Shopify 后台
+ * - 支持单条自动更新/新增操作（通过 ShopifyStoreAction）
+ * - 支持批量执行同类操作（如一键更新所有 update 项）
+ * - 点击变更字段 Tag 可查看新旧值对比
+ * - 支持复制 SKU 到剪贴板
+ *
+ * @param result - 比对结果数组
+ * @param onClick - 点击结果项的回调（用于查看详情）
+ * @param onLoading - 批量操作时的 loading 状态回调
+ */
 export const ResultData: FC<{result: CompareData[], onClick: (item: unknown) => void, onLoading: (val: boolean) => void}> = ({
     result,
     onClick,

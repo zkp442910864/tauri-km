@@ -10,6 +10,19 @@ const highlighter = createHighlighterCoreSync({
     langs: [ts, json,],
     engine: createJavaScriptRegexEngine(),
 });
+
+/**
+ * 代码高亮渲染组件 —— 使用 Shiki 对 JSON/TypeScript 代码进行语法高亮。
+ *
+ * 特性：
+ * - 支持 JSON 和 TypeScript 语法高亮
+ * - 使用 Tokyo Night 主题
+ * - 支持行号显示和行折叠
+ * - 自动检测内容类型（JSON / TypeScript）
+ *
+ * @param content - 需要高亮的代码字符串
+ * @param type - 代码类型，可选 'json' 或 'ts'，默认自动检测
+ */
 export const RenderCode: FC<{content?: string, type?: string}> = ({
     content,
     type,

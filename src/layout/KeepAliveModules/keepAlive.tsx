@@ -7,6 +7,32 @@ import { NoFindPage } from '../modules/NoFindPage';
 import { ErrorBoundary } from 'react-error-boundary';
 import { ErrorComponent } from '../modules/ErrorComponent';
 
+/**
+ * 页面级 KeepAlive 缓存管理器（单例）。
+ *
+ * 实现类似 Vue `<keep-alive>` 的页面缓存能力：
+ * - 页面切换时将离开的页面 DOM 通过 Portal 挂载到隐藏容器，而非销毁
+ * - 返回时直接显示缓存的 DOM，避免重新渲染和数据丢失
+ * - 支持页面生命周期回调（`useLifeCycle`）：初次加载、再次激活、参数变化
+ * - 提供 `closePage` / `closeAllPage` / `closeOtherPage` / `refreshPage` 管理方法
+ *
+ * 内部结构：
+ * - `pages` —— 已缓存的页面位置信息列表
+ * - `pageMap` —— pathname → 页面数据的映射
+ * - `pageLifeCycle` —— pathname → 生命周期回调的映射
+ * - `currentPathname` —— 当前激活页面的路径
+ *
+ * @example
+ * ```tsx
+ * // 在路由组件中使用
+ * const keepAlive = KeepAlive.getInstance();
+ * keepAlive.useLifeCycle((type, location) => {
+ *   if (type === ELifeCycleType.BEFORE_MOUNT) {
+ *     console.log('页面激活:', location.pathname);
+ *   }
+ * });
+ * ```
+ */
 export class KeepAlive {
     static instance: KeepAlive;
 

@@ -7,6 +7,24 @@ import { get_model, get_detail_v2, get_title, get_banner_imgs, get_price, get_sk
 import { GLOBAL_DATA } from '../../global_data';
 import { table } from '../../database';
 
+/**
+ * Amazon 数据采集器 —— 通过 headless_chrome 抓取 Amazon 产品页面。
+ *
+ * 采集流程：
+ * 1. 获取 SKU 列表（从品牌集合页面抓取，或使用指定的 `assign_skus`）
+ * 2. 逐 SKU 抓取产品详情页 HTML（通过 Tauri 命令 `task_amazon_product_fetch_html`）
+ * 3. 解析 HTML 提取各字段数据（标题、价格、图片、描述、评论等）
+ * 4. 补充变体 SKU（从 `dimensionValuesDisplayData` 中提取）
+ * 5. 数据存入 SQLite `amazon_product` 表
+ *
+ * 价格策略：自动 +$2 加价（`get_price` 中实现）
+ *
+ * @example
+ * ```ts
+ * const action = new AmazonAction([]); // 全量采集
+ * action.thenFn = (data) => console.log('采集完成:', data.sku_data.length);
+ * ```
+ */
 export class AmazonAction {
     // https://www.amazon.com/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5
     // ?language=en_US

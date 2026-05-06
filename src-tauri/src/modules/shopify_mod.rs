@@ -1,3 +1,12 @@
+//! Shopify 域 Tauri 命令模块 —— 通过 headless_chrome 操作 Shopify 后台。
+//!
+//! 提供以下 Tauri 命令：
+//! - `task_shopify_store_login` —— 打开有头浏览器让用户登录，保存 Cookie
+//! - `task_shopify_store_edit_product` —— 编辑已有产品（标题、价格、图片、描述等）
+//! - `task_shopify_store_add_product` —— 新增产品
+//!
+//! 核心流程：注入 Cookie → 打开后台页面 → 模拟 DOM 操作 → 保存产品
+
 use std::{fs, path::Path, sync::Arc, thread::sleep, time::Duration};
 
 use headless_chrome::{
@@ -17,7 +26,14 @@ use super::{
     MY_BROWSER,
 };
 
-/** 打开有头页面,让用户登录 */
+/// Tauri 命令：打开有头浏览器让用户登录 Shopify 后台。
+///
+/// 流程：
+/// 1. 从 Tauri Store 读取已保存的 Cookie
+/// 2. 注入 Cookie 到浏览器
+/// 3. 打开 Shopify 后台页面
+/// 4. 等待用户手动登录
+/// 5. 登录成功后保存新 Cookie 到 Tauri Store
 #[command]
 pub async fn task_shopify_store_login(app: AppHandle, url: String) -> Result<String, String> {
     let browser = &MY_BROWSER;
@@ -123,7 +139,9 @@ pub async fn task_shopify_store_login(app: AppHandle, url: String) -> Result<Str
     }
 }
 
-/** 确认登录状态,并关闭页面 */
+/// Tauri 命令：确认登录状态并保存 Cookie。
+///
+/// 从已打开的 Tab 中读取 Cookie，保存到 Tauri Store 供下次使用。
 #[command]
 pub async fn task_shopify_store_login_status(
     app: AppHandle,
@@ -194,7 +212,9 @@ pub async fn task_shopify_store_login_status(
     }
 }
 
-/** 打开编辑页面 */
+/// Tauri 命令：打开 Shopify 产品编辑页面。
+///
+/// 打开产品编辑页并等待页面加载完成，返回 Tab ID 供后续操作使用。
 #[command]
 pub async fn task_shopify_store_product_open(url: String) -> Result<String, String> {
     let result = spawn_blocking(move || -> String {
@@ -217,7 +237,17 @@ pub async fn task_shopify_store_product_open(url: String) -> Result<String, Stri
     }
 }
 
-/** 接受指令类型,执行不同操作 */
+/// Tauri 命令：更新产品单个字段。
+///
+/// 根据 `input_type` 分发到不同的 DOM 操作（标题、价格、图片、描述等）。
+/// 通过 `PARSE_TYPE_MAP` 将字符串类型映射为 `TParseTypeMsg` 枚举。
+///
+/// # 参数
+/// - `url`: 产品页面 URL
+/// - `input_type`: 字段类型标识（如 `get_title`、`get_price`）
+/// - `data`: 字段值（JSON 字符串）
+/// - `tab_id`: 已打开的 Tab ID
+/// - `sku`: 产品 SKU
 #[command]
 pub async fn task_shopify_store_product_update_item(
     app: AppHandle,
@@ -495,6 +525,9 @@ pub async fn task_shopify_store_product_update_item(
     }
 }
 
+/// 上传产品图片 —— 从 `km-temp/<sku>/<folder_type>/` 目录读取图片并上传到 Shopify。
+///
+/// 返回上传的图片数量。
 fn page_upload_imgs(app: &AppHandle, el: &Element<'_>, sku: &str, folder_type: &str) -> usize {
     let path_url = Path::new(&sku).join(folder_type);
     let folder_path = create_folder(app.clone(), path_url.to_string_lossy().to_string());
@@ -513,7 +546,9 @@ fn page_upload_imgs(app: &AppHandle, el: &Element<'_>, sku: &str, folder_type: &
     urls.len()
 }
 
-/** 保存并关闭页面 */
+/// Tauri 命令：保存产品并关闭编辑页面。
+///
+/// 点击提交按钮保存产品，等待 5 秒后关闭 Tab。
 #[command]
 pub async fn task_shopify_store_product_finish(tab_id: String) -> Result<String, String> {
     let result = spawn_blocking(move || {
@@ -533,6 +568,9 @@ pub async fn task_shopify_store_product_finish(tab_id: String) -> Result<String,
     }
 }
 
+/// 通过 Tab ID 查找已打开的浏览器 Tab。
+///
+/// 遍历全局浏览器实例的所有 Tab，匹配 `target_id`。
 fn find_tab_v2(tab_id: &str) -> Option<Arc<Tab>> {
     let browser = &MY_BROWSER;
 
@@ -546,6 +584,9 @@ fn find_tab_v2(tab_id: &str) -> Option<Arc<Tab>> {
         .cloned()
 }
 
+/// 快速粘贴值到输入框 —— 通过剪贴板 + Ctrl+V 实现，避免直接输入被拦截。
+///
+/// 流程：复制到剪贴板 → 点击输入框 → 全选 → 删除/粘贴
 fn quick_adhesive_value(app: &AppHandle, el: &Element<'_>, tab: &Arc<Tab>, new_val: &str) {
     let _ = app.clipboard().write_text(new_val);
     let _ = el.click();
@@ -562,15 +603,19 @@ fn quick_adhesive_value(app: &AppHandle, el: &Element<'_>, tab: &Arc<Tab>, new_v
     sleep(Duration::from_millis(1000));
 }
 
+/// 模拟 Tab 键按下 —— 用于在表单字段间快速切换焦点。
 fn each_tab_do(tab: &Arc<Tab>, count: usize) {
     for _ in 1..=count {
         let _ = tab.press_key("Tab");
     }
 }
 
-/**
- * wait_append true等待元素出现,false等待元素消失
- */
+/// 等待页面加载状态 —— 轮询检测骨架屏/Loading 元素的出现或消失。
+///
+/// # 参数
+/// - `tab`: 浏览器 Tab
+/// - `wait_append`: `true` 等待元素出现，`false` 等待元素消失
+/// - `keywords`: 可选的 CSS 选择器，默认为 `div[class^=Polaris-Skeleton]`
 fn confirm_loading(tab: &Arc<Tab>, wait_append: bool, keywords: Option<&str>) {
     loop {
         let key = if let Some(val) = keywords {

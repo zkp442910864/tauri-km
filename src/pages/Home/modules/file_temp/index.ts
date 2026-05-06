@@ -2,6 +2,17 @@ import { invoke } from '@tauri-apps/api/core';
 import { basename, desktopDir, join } from '@tauri-apps/api/path';
 import { BaseDirectory, create } from '@tauri-apps/plugin-fs';
 
+/**
+ * 临时文件管理器 —— 在桌面 `km-temp` 目录下创建临时文件。
+ *
+ * 用于存储采集过程中下载的图片等临时资源。
+ * 通过 Tauri `task_create_folder` 命令确保目录存在，再通过 `@tauri-apps/plugin-fs` 写入文件。
+ *
+ * @example
+ * ```ts
+ * await file_temp.create('https://example.com/image.jpg', uint8ArrayData);
+ * ```
+ */
 class FileTemp {
     base_dir = BaseDirectory.Desktop;
     desktop_dir = desktopDir();

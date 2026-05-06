@@ -1,6 +1,12 @@
 use phf::phf_map;
 use serde::{Deserialize, Serialize};
 
+/// Tauri 命令统一返回结构 —— 所有命令都通过此结构序列化后返回给前端。
+///
+/// 前端通过 `JSON.parse(res) as ITauriResponse<T>` 解析。
+/// - `status: 1` 表示成功，`0` 表示失败
+/// - `data` 为业务数据
+/// - `message` 为错误信息（仅失败时有值）
 #[derive(Serialize, Deserialize, std::fmt::Debug)]
 pub struct Response<T = String>
 where
@@ -47,6 +53,7 @@ where
     }
 }
 
+/// 浏览器实例状态标记 —— 用于跟踪 headless_chrome 是否已初始化。
 pub struct BrowserStatus {
     status: bool,
 }
@@ -65,7 +72,9 @@ impl BrowserStatus {
     }
 }
 
-// 定义枚举，用于描述每种类型
+/// HTML 解析类型枚举 —— 标识从 Amazon/Shopify 页面中提取的数据字段。
+///
+/// 每个枚举值对应一种数据提取操作，用于在前端和 Rust 端之间统一标识解析类型。
 #[derive(Debug)]
 pub enum TParseTypeMsg {
     GetTitle,
@@ -92,7 +101,9 @@ pub enum TParseTypeMsg {
     GetChoice,
 }
 
-// 使用 `phf` 静态哈希映射来关联字符串和枚举值
+/// 静态哈希映射 —— 将前端传入的字符串类型标识映射为 `TParseTypeMsg` 枚举。
+///
+/// 支持 `.add` 后缀变体（用于新增产品场景）。
 pub static PARSE_TYPE_MAP: phf::Map<&'static str, TParseTypeMsg> = phf_map! {
     "get_title" => TParseTypeMsg::GetTitle,
     "get_title.add" => TParseTypeMsg::GetTitle,

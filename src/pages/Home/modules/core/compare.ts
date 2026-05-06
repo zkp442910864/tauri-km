@@ -3,6 +3,24 @@ import { IAmazonData, IDetailContentRoot, IOtherData, IReviewData, TParseTypeMsg
 import { LogOrErrorSet } from '@/utils';
 import { invoke } from '@tauri-apps/api/core';
 
+/**
+ * 数据比对引擎 —— 以 SKU 为主键，对比 Amazon 和 Shopify 产品数据。
+ *
+ * 比对流程：
+ * 1. `each_add_data` —— 遍历 Amazon SKU，Shopify 中不存在的 → 新增（add）
+ * 2. `each_remove_data` —— 遍历 Shopify SKU，Amazon 中不存在或价格解析失败 → 删除（remove）
+ * 3. `each_update_data` —— 两边都存在的 SKU，逐字段对比 → 更新（update）或一致（fit）
+ *
+ * 比对维度：标题、价格、图片（轮播图+详情图，含像素级对比）、描述、规格、
+ * 评论、详情 JSON、型号、关联标签、Amazon Choice 等。
+ *
+ * @example
+ * ```ts
+ * const compare = new Compare(amazonResult, shopifyResult);
+ * const results = await compare.start();
+ * // results: CompareData[] — 每项包含 type(add/update/remove/fit/warn) 和 data
+ * ```
+ */
 export class Compare {
     amazon_data: TThenData;
     shopify_data: TThenData;
@@ -341,6 +359,18 @@ export class Compare {
 
 
 
+/**
+ * 比对结果数据类 —— 封装单条 SKU 的比对结果。
+ *
+ * @typeParam T - 数据类型，默认为 IAmazonData
+ *
+ * @example
+ * ```ts
+ * const result = new CompareData('shopify', 'update', shopifyItem)
+ *   .as_update_data(amazonItem)
+ *   .as_explain('get_price,get_title');
+ * ```
+ */
 export class CompareData<T = IAmazonData> {
     type: 'add' | 'update' | 'remove' | 'warn' | 'fit';
     data_type: 'shopify' | 'amazon';

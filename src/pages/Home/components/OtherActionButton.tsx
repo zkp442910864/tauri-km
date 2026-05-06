@@ -9,7 +9,21 @@ import { DB_NAME, reset_database, table } from '../modules/database';
 import { AmazonAction } from '../modules/core/amazon_action';
 import { amazon_choice_fn } from './AmazonChoice';
 
-
+/**
+ * 其他操作按钮组件 —— 提供下拉菜单形式的辅助操作集合。
+ *
+ * 包含以下操作：
+ * - Shopify 数据写入库（含/不含库存更新）
+ * - Amazon 数据写入库
+ * - 亚马逊精选产品查看
+ * - 打开数据库文件
+ * - 重置数据库
+ * - 打开临时文件夹
+ * - 打开 Amazon 产品页面
+ *
+ * @param children - 按钮内容
+ * @param assign_skus - 当前已指定的 SKU 列表（用于筛选操作范围）
+ */
 export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}> = ({
     children,
     assign_skus,

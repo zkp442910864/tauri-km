@@ -2,7 +2,12 @@ import { Button } from 'antd';
 import { shopify_admin_api } from '../modules/shopify_admin_api';
 import { FC, ReactNode } from 'react';
 
-
+/**
+ * 测试按钮组件 —— 开发调试用，用于快速测试各种 Tauri 命令和 API 调用。
+ *
+ * 按钮内容通过 children 传入，点击后执行 test 函数中的调试代码。
+ * 注意：此组件仅用于开发环境，不应出现在生产构建中。
+ */
 export const TestButton: FC<{children: ReactNode}> = ({ children, }) => {
 
     const test = async () => {

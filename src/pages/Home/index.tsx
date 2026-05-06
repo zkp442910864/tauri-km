@@ -22,6 +22,15 @@ import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
 import { IConfig } from './modules/types/index.type';
 import { GLOBAL_DATA } from './modules/global_data';
 
+/**
+ * 应用初始化流程 —— 加载配置、初始化数据库和 Shopify API。
+ *
+ * 流程：
+ * 1. 从 Tauri Store 读取配置列表，若无则弹出文件选择器让用户选择 JSON 配置文件
+ * 2. 初始化数据库（创建表结构）
+ * 3. 初始化 Shopify Admin API（设置 access_token 和 store_url）
+ * 4. 将配置写入 GLOBAL_DATA（一次性写入，后续只读）
+ */
 const init_promise = (async () => {
     const confirm_config_data = async () => {
         let record_data = await store.get_val<IConfig[]>('configs');
@@ -53,6 +62,18 @@ const init_promise = (async () => {
     init_shopify_admin_api();
 })();
 
+/**
+ * Home 页面主组件 —— 应用的核心工作台。
+ *
+ * 功能：
+ * - SKU 输入框：支持逗号、空格、换行分隔的多 SKU 输入
+ * - 数据采集：触发 Amazon/Shopify 数据采集流程
+ * - 数据比对：调用 Compare 引擎对比两边数据
+ * - 结果展示：ResultData 组件展示比对结果（add/update/remove/fit/warn）
+ * - 日志面板：RenderLogs 实时显示操作日志
+ * - 代码预览：RenderCode 高亮展示 JSON/TS 数据
+ * - 辅助操作：OtherActionButton 提供数据库管理、文件操作等
+ */
 const Home = () => {
 
     const [, update,] = useStateExtend({});

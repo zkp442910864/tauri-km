@@ -6,6 +6,21 @@ import { IHtmlParseData, IOtherData, IShopifyData, IShopifyProductData, TParseDa
 import { shopify_admin_api } from '../shopify_admin_api';
 import { GLOBAL_DATA } from '../global_data';
 
+/**
+ * Shopify 数据采集器 —— 通过页面抓取和 GraphQL API 获取 Shopify 产品数据。
+ *
+ * 采集流程：
+ * 1. 获取 SKU 列表（通过 GraphQL API `fetch_all_sku_v2` 或指定 `assign_skus`）
+ * 2. 逐 SKU 抓取产品详情页 HTML（`fetch_sku_detail`），并发度为 3
+ * 3. 解析 HTML 提取产品信息（标题、价格、图片、描述等）
+ * 4. 将数据转换为与 Amazon 相同的 `TParseData[]` 结构（`convert_data`），便于比对引擎统一处理
+ *
+ * @example
+ * ```ts
+ * const action = new ShopifyAction([], true); // 全量采集，含库存
+ * action.thenFn = (data) => console.log('采集完成:', data.sku_data.length);
+ * ```
+ */
 export class ShopifyAction {
 
     domain = GLOBAL_DATA.CURRENT_STORE.config.shopify_domain;

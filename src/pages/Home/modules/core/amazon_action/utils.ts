@@ -2,10 +2,23 @@
 import { get_real_dom, get_real_dom_text, handle_number } from '@/utils';
 import { IHtmlParseData, IDetailContentRoot, IDetailContentData, IReviewData } from '../../types/index.type';
 
+/**
+ * Amazon 产品页面 HTML 解析工具集。
+ *
+ * 每个函数接收 `Document` 对象（由 DOMParser 解析 HTML 得到），
+ * 返回 `IHtmlParseData<T>` 包装的解析结果。
+ * 解析失败时返回包含 error 信息的 IHtmlParseData 实例（不会抛出异常）。
+ */
+
+/**
+ * 从页面 HTML 中提取变体 SKU 映射数据。
+ * 解析 `dimensionValuesDisplayData` JSON 对象，返回 `{ sku: [variant_values] }` 映射。
+ */
 export const get_model = (dom: Document) => {
     return JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
 };
 
+/** 解析产品标题 —— 从 `#productTitle` 元素提取 */
 export const get_title = (dom: Document) => {
     try {
         return new IHtmlParseData('get_title', (dom.querySelector('#productTitle') as HTMLElement)?.innerText.trim());
@@ -15,11 +28,16 @@ export const get_title = (dom: Document) => {
     }
 };
 
+/** 判断是否为 Amazon Choice 产品 —— 检测 `#acBadge_feature_div` 中是否包含 'choice' */
 export const get_choice = (dom: Document) => {
     const text = (dom.querySelector<HTMLDivElement>('#acBadge_feature_div')?.innerText || '').toLocaleLowerCase();
     return text.indexOf('choice') > -1;
 };
 
+/**
+ * 解析产品轮播图 —— 从 `#imageBlock+script` 中提取 ImageBlockATF 数据。
+ * 优先使用 hiRes 高清图，回退到 large 图。
+ */
 export const get_banner_imgs = (dom: Document) => {
     try {
         const js_str = dom.querySelector('#imageBlock+script')?.textContent ?? '';
@@ -40,6 +58,11 @@ export const get_banner_imgs = (dom: Document) => {
     }
 };
 
+/**
+ * 解析产品价格 —— 从 `#apex_desktop .aok-offscreen` 提取当前价和原价。
+ * 价格策略：自动 +$2 加价（`price = price + 2`）。
+ * @returns `{ price, old_price }` 或 `null`（解析失败时）
+ */
 export const get_price = (dom: Document) => {
     let price = -1;
     let old_price = -1;
@@ -64,6 +87,10 @@ export const get_price = (dom: Document) => {
     return new IHtmlParseData('get_price', price === -1 ? null : { price, old_price, });
 };
 
+/**
+ * 解析产品型号 —— 从 `dimensionValuesDisplayData` 提取当前 SKU 的型号信息。
+ * 格式为 `{detail_model}&&&&{variant_values}`，用于 Shopify 端的型号字段。
+ */
 export const get_sku_model = (dom: Document, sku: string, detail_model: string) => {
     try {
         const data = JSON.parse(dom.documentElement.outerHTML.match(/"dimensionValuesDisplayData"\s+?:(.*),\n/)?.[1] ?? '{}') as Record<string, string[]>;
@@ -75,6 +102,10 @@ export const get_sku_model = (dom: Document, sku: string, detail_model: string) 
     }
 };
 
+/**
+ * 解析产品描述文案 —— 从 `#feature-bullets>ul` 提取 HTML 并渲染为纯文本。
+ * 使用 `get_real_dom_text` 将 HTML 注入隐藏 DOM 获取真实渲染文本。
+ */
 export const get_desc_text = async (dom: Document) => {
     try {
         const el = dom.querySelector('#feature-bullets>ul');
@@ -87,6 +118,11 @@ export const get_desc_text = async (dom: Document) => {
     }
 };
 
+/**
+ * 解析产品最新评论 —— 从 `#cm-cr-dp-review-list` 提取 5 星评论数据。
+ * 包含评论者名称、评分、文案、日期、型号、头像等字段。
+ * 仅保留 5 星评论，返回 JSON 字符串。
+ */
 export const get_review_data = async (dom: Document) => {
     try {
         const el = dom.querySelector('#cm-cr-dp-review-list');
@@ -116,6 +152,11 @@ export const get_review_data = async (dom: Document) => {
     }
 };
 
+/**
+ * 解析产品详情规格（v1 版本）—— 从 `#productOverview_feature_div tr` 提取。
+ * 格式为 `标题:值` 的多行文本。
+ * @deprecated 使用 `get_detail_v2` 替代，v2 版本支持更多数据源和去重。
+ */
 export const get_detail = (dom: Document) => {
     try {
         const node_list = dom.querySelectorAll('#productOverview_feature_div tr') ?? [];
@@ -135,6 +176,18 @@ export const get_detail = (dom: Document) => {
     }
 };
 
+/**
+ * 解析产品详情规格（v2 版本）—— 综合多个数据源提取产品规格信息。
+ *
+ * 数据源优先级：
+ * 1. `#productOverview_feature_div tr.a-spacing-small` —— 产品概览表格
+ * 2. `#productOverview_feature_div #glance_icons_div tr` —— 图标概览行
+ * 3. `#prodDetails table tr` —— 详细规格表格（排除 ASIN、Best Sellers Rank、Customer Reviews）
+ *
+ * 自动去重（按 title 小写去重），同时提取 `Item model number` 作为 `detail_model`。
+ *
+ * @returns `[detail_model, IHtmlParseData<string>]` 元组
+ */
 export const get_detail_v2 = (dom: Document) => {
     let detail_model = '';
     try {
@@ -191,6 +244,12 @@ export const get_detail_v2 = (dom: Document) => {
     }
 };
 
+/**
+ * 解析产品功能与规格 —— 从 `Features & Specs` 展开区域提取规格表格。
+ *
+ * 通过查找 `span.a-expander-prompt` 中文本为 "Features & Specs" 的元素，
+ * 定位其父容器并提取所有 `tr` 行数据。
+ */
 export const get_features_specs = (dom: Document) => {
     // TODO:需要一个补偿措施 Features & Specs
 
@@ -232,6 +291,18 @@ export const get_features_specs = (dom: Document) => {
     // }
 };
 
+/**
+ * 解析产品详情内容 JSON —— 从 `#aplus` 区域提取 A+ 内容并转换为结构化 JSON。
+ *
+ * 递归遍历 A+ 内容 DOM 树，识别以下元素类型：
+ * - `img` —— 图片（提取 data-src 或 src）
+ * - `title` —— 标题文本
+ * - `text` —— 正文文本
+ * - `row` —— 行内元素组合
+ * - `columns` —— 多列布局
+ *
+ * @returns `IDetailContentRoot` 结构化数据对象
+ */
 export const get_content_json = async (dom: Document) => {
     const img_urls: string[] = [];
     const data: IDetailContentRoot = {

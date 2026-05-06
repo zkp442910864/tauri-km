@@ -3,6 +3,13 @@ import { IAmazonData, IHtmlParseData, TParseData, TParseType, TThenData } from '
 import { CDatabase, db } from './base';
 import dayjs from 'dayjs';
 
+/**
+ * Amazon 产品数据表操作类（单例）。
+ *
+ * 表名：`amazon_product`，主键为 `sku`。
+ * 存储从 Amazon 产品页面采集的所有字段数据（标题、价格、图片、描述等）。
+ * 提供 `get_choice_data` 方法查询 Amazon Choice 产品。
+ */
 export class AmazonProduct extends CDatabase {
     static instance: AmazonProduct;
     table_name = 'amazon_product';
