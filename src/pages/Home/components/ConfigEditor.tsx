@@ -12,6 +12,7 @@ import { IConfig } from '../modules/types/index.type';
  * 功能：
  * - 展示当前 GLOBAL_DATA 中的配置数据
  * - 支持编辑所有配置字段（access_token、api_version、store_domain 等）
+ * - amazon_domains 支持动态列表编辑（站点代码 + 域名）
  * - amazon_collection_urls 支持多值标签输入
  * - 保存时同步更新 GLOBAL_DATA 内存 + Tauri Store 持久化
  */
@@ -22,6 +23,7 @@ const ConfigEditor = () => {
     /** 初始化表单值为当前配置 */
     const init_values: IConfig['config'] = {
         ...GLOBAL_DATA.CURRENT_STORE.config,
+        amazon_domains: (GLOBAL_DATA.CURRENT_STORE.config.amazon_domains || []).slice(),
         amazon_collection_urls: [...GLOBAL_DATA.CURRENT_STORE.config.amazon_collection_urls,],
     };
 
@@ -86,13 +88,38 @@ const ConfigEditor = () => {
                 </Form.Item>
 
                 <Typography.Title level={5}>Amazon 配置</Typography.Title>
-                <Form.Item
-                    label="Amazon Domain"
-                    name="amazon_domain"
-                    rules={[{ required: true, message: '请输入 Amazon Domain', },]}
-                >
-                    <Input placeholder="如 https://www.amazon.com" />
-                </Form.Item>
+                <Form.List name="amazon_domains">
+                    {(fields, { add, remove, }) => (
+                        <>
+                            {fields.map((field, index) => (
+                                <Space key={field.key} align="baseline" className="un-mb-8px!">
+                                    <Form.Item
+                                        {...field}
+                                        name={[field.name, 'site',]}
+                                        rules={[{ required: true, message: '请输入站点代码', },]}
+                                        className="un-mb-0!"
+                                    >
+                                        <Input placeholder="站点代码，如 us" className="un-w-100px" />
+                                    </Form.Item>
+                                    <Form.Item
+                                        {...field}
+                                        name={[field.name, 'domain',]}
+                                        rules={[{ required: true, message: '请输入域名', },]}
+                                        className="un-mb-0!"
+                                    >
+                                        <Input placeholder="如 https://www.amazon.com" className="un-w-300px" />
+                                    </Form.Item>
+                                    {index > 0 && <span className="color-red pointer un-text-16px" onClick={() => remove(field.name)}>✕</span>}
+                                </Space>
+                            ))}
+                            <Form.Item>
+                                <Button type="dashed" onClick={() => add()} block>
+                                    + 添加 Amazon 站点
+                                </Button>
+                            </Form.Item>
+                        </>
+                    )}
+                </Form.List>
                 <Form.Item
                     label="Amazon Collection URLs"
                     name="amazon_collection_urls"

@@ -45,8 +45,8 @@ export class AmazonProduct extends CDatabase {
                 amazon_product_brand           TEXT,
                 amazon_product_collections           TEXT,
 
-                status             NUMERIC NOT NULL
-                                        DEFAULT (1),
+                status             TEXT    NOT NULL
+                                        DEFAULT ('us'),
                 create_date        TEXT,
                 update_date        TEXT
             );
@@ -161,8 +161,8 @@ export class AmazonProduct extends CDatabase {
             'amazon_product_brand',
             'amazon_product_collections',
         ];
-        const result: Record<TParseType | 'sku', string>[] = await db.select(
-            `select ${table_keys.join()} from ${this.table_name} where status=1 ${where ? 'and ' + where : ''}`
+        const result: (Record<TParseType | 'sku', string> & { status: string })[] = await db.select(
+            `select ${table_keys.join()}, status from ${this.table_name} where status != '' ${where ? 'and ' + where : ''}`
         );
 
         const new_result = result.map((raw_item) => {
@@ -171,6 +171,7 @@ export class AmazonProduct extends CDatabase {
             });
             const data: IAmazonData = {
                 sku: raw_item.sku,
+                status: raw_item.status ?? '',
                 detail: arr,
                 detail_map: Object.fromEntries(arr.map((ii) => [ii.type, ii,])) as Record<TParseType, TParseData>,
             };
@@ -198,7 +199,7 @@ export class AmazonProduct extends CDatabase {
         return keys.map(key => {
             const detail_data = map[key as TParseType]?.data;
 
-            if (key === 'status') return 1;
+            if (key === 'status') return item.status ?? 'us';
             if (key === 'sku') return item.sku;
             // if (key === 'amazon_choice') return +(detail_data || false);
             if (['create_date', 'update_date',].includes(key)) return dayjs().format('YYYY-MM-DD HH:mm:ss');
@@ -208,6 +209,34 @@ export class AmazonProduct extends CDatabase {
             }
 
             return JSON.stringify('key 匹配不到');
+        });
+    }
+
+    /**
+     * 更新指定 SKU 的站点状态 —— 追加站点代码到 status 字段。
+     *
+     * 读取现有 status 值，将新站点代码追加（去重），以逗号分隔存储。
+     * 若 SKU 不存在则跳过。
+     *
+     * @param sku - 产品 SKU
+     * @param site - 站点代码（如 'us'、'ca'）
+     */
+    async update_status(sku: string, site: string) {
+        await log_error.capture_error(async () => {
+            const result = await db.select<{ status: string }[]>(
+                `select status from ${this.table_name} where sku=$1`, [sku,]
+            );
+            if (!result.length) return;
+
+            const current = result[0].status || '';
+            const sites = current ? current.split(',').filter(Boolean) : [];
+            if (!sites.includes(site)) {
+                sites.push(site);
+            }
+            await db.execute(
+                `update ${this.table_name} set status=$1, update_date=$2 where sku=$3`,
+                [sites.join(','), dayjs().format('YYYY-MM-DD HH:mm:ss'), sku,]
+            );
         });
     }
 

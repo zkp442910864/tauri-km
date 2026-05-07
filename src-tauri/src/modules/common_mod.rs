@@ -5,7 +5,10 @@ use super::{
 
 use headless_chrome::{
     browser::tab::point::Point,
-    protocol::cdp::{Page, DOM},
+    protocol::cdp::{
+        Page, DOM,
+        Network::{CookieParam, CookiePriority, CookieSameSite},
+    },
 };
 use headless_chrome::{Browser, LaunchOptions, Tab};
 use image::{load_from_memory, EncodableLayout};
@@ -79,6 +82,96 @@ pub fn start_browser(url: &str) -> Result<(Arc<Tab>, &Browser), String> {
     })?;
 
     push_web_log(WebLog::new_default("打开页面"));
+    tab.navigate_to(url)
+        .and_then(|_| tab.wait_until_navigated())
+        .map_err(|e| {
+            push_web_log(WebLog::new_error("打开页面失败"));
+            format!("导航失败: {}", e)
+        })?;
+
+    Ok((tab, browser))
+}
+
+/// 为 Amazon 页面设置区域和语言 Cookie。
+///
+/// 设置以下 Cookie：
+/// - `i18n-prefs=USD` —— 货币偏好为美元
+/// - `lc-main=en_US` —— 语言偏好为美式英语
+///
+/// # 参数
+/// - `tab`: 浏览器 Tab 实例
+fn set_amazon_cookies(tab: &Arc<Tab>) -> Result<(), String> {
+    tab.set_cookies(vec![
+        CookieParam {
+            domain: Some(".amazon.com".to_string()),
+            url: None,
+            name: "i18n-prefs".to_string(),
+            value: "USD".to_string(),
+            expires: None,
+            http_only: Some(false),
+            partition_key: None,
+            path: Some("/".to_string()),
+            priority: Some(CookiePriority::Medium),
+            same_party: None,
+            same_site: Some(CookieSameSite::Lax),
+            secure: Some(false),
+            source_port: None,
+            source_scheme: None,
+        },
+        CookieParam {
+            domain: Some(".amazon.com".to_string()),
+            url: None,
+            name: "lc-main".to_string(),
+            value: "en_US".to_string(),
+            expires: None,
+            http_only: Some(false),
+            partition_key: None,
+            path: Some("/".to_string()),
+            priority: Some(CookiePriority::Medium),
+            same_party: None,
+            same_site: Some(CookieSameSite::Lax),
+            secure: Some(false),
+            source_port: None,
+            source_scheme: None,
+        },
+    ])
+    .map_err(|e| format!("设置 Amazon Cookie 失败: {}", e))
+}
+
+/// 启动浏览器并导航到 Amazon 页面（自动注入区域/语言 Cookie）。
+///
+/// 流程：创建 Tab → 先导航到 amazon.com 建立域名上下文 →
+/// 设置 `i18n-prefs=USD`、`lc-main=en_US` Cookie → 导航到目标 URL。
+///
+/// # 参数
+/// - `url`: Amazon 页面 URL
+///
+/// # 返回
+/// `(Arc<Tab>, &Browser)` 元组。
+pub fn start_browser_amazon(url: &str) -> Result<(Arc<Tab>, &Browser), String> {
+    push_web_log(WebLog::new_default("启动浏览器(Amazon)"));
+
+    MY_BROWSER_STATUS.lock().unwrap().set_status(true);
+
+    let browser = &MY_BROWSER;
+
+    push_web_log(WebLog::new_default("打开tab标签"));
+    let tab = browser.new_tab().map_err(|e| {
+        push_web_log(WebLog::new_error("打开tab标签失败"));
+        format!("Failed to create tab: {}", e)
+    })?;
+
+    // 先导航到 amazon.com 以建立域名上下文，使 Cookie 可以设置
+    tab.navigate_to("https://www.amazon.com")
+        .and_then(|_| tab.wait_until_navigated())
+        .map_err(|e| format!("导航到 Amazon 首页失败: {}", e))?;
+
+    // 设置区域和语言 Cookie
+    push_web_log(WebLog::new_default("设置 Amazon Cookie (i18n-prefs=USD, lc-main=en_US)"));
+    set_amazon_cookies(&tab)?;
+
+    // 再导航到目标页面（Cookie 已生效）
+    push_web_log(WebLog::new_default("打开目标页面"));
     tab.navigate_to(url)
         .and_then(|_| tab.wait_until_navigated())
         .map_err(|e| {
@@ -185,14 +278,14 @@ pub fn page_screenshot(app: AppHandle, tab: &Arc<Tab>, url: String, html: &Strin
     let path_url = create_folder(app, "page-content".to_string());
     let file_html_name = format!(
         "{}.html",
-        url.replace("?language=en_US&currency=USD", "")
+        url.replace("?language=en_US", "")
             .split("/")
             .last()
             .unwrap()
     );
     let file_img_name = format!(
         "{}.png",
-        url.replace("?language=en_US&currency=USD", "")
+        url.replace("?language=en_US", "")
             .split("/")
             .last()
             .unwrap()

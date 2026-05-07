@@ -13,7 +13,7 @@ const default_config: IConfig = {
         store_domain: '',
         shopify_store_url: '',
         shopify_domain: '',
-        amazon_domain: '',
+        amazon_domains: [],
         amazon_collection_urls: [],
     },
 };

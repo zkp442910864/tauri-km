@@ -2,7 +2,7 @@ import { LogOrErrorSet } from '@/utils';
 import { core } from '@tauri-apps/api';
 import { stringify } from 'qs';
 import { alphabetical, parallel, retry, sleep } from 'radash';
-import { TThenData, IAmazonData, IHtmlParseData, TParseData, TParseType } from '../../types/index.type';
+import { TThenData, IAmazonData, IAmazonDomainItem, IHtmlParseData, TParseData, TParseType } from '../../types/index.type';
 import { get_model, get_detail_v2, get_title, get_banner_imgs, get_price, get_sku_model, get_desc_text, get_content_json, get_choice, get_review_data } from './utils';
 import { GLOBAL_DATA } from '../../global_data';
 import { table } from '../../database';
@@ -16,6 +16,7 @@ import { table } from '../../database';
  * 3. 解析 HTML 提取各字段数据（标题、价格、图片、描述、评论等）
  * 4. 补充变体 SKU（从 `dimensionValuesDisplayData` 中提取）
  * 5. 数据存入 SQLite `amazon_product` 表
+ * 6. 以主站点（第一个域名）数据为准，其他站点仅维护 status 状态
  *
  * 价格策略：自动 +$2 加价（`get_price` 中实现）
  *
@@ -29,12 +30,11 @@ export class AmazonAction {
     // https://www.amazon.com/stores/page/78D7D7E4-A104-40B0-8DC1-FB61BD2F16E5
     // ?language=en_US
 
-    domain = GLOBAL_DATA.CURRENT_STORE.config.amazon_domain;
+    amazon_domains = GLOBAL_DATA.CURRENT_STORE.config.amazon_domains;
     collection_urls = GLOBAL_DATA.CURRENT_STORE.config.amazon_collection_urls;
     product_url = '/dp';
     fixed_params = {
         language: 'en_US',
-        currency: 'USD',
     };
     thenFn?: (data: TThenData) => void;
     catchFn?: (err: unknown) => void;
@@ -53,13 +53,27 @@ export class AmazonAction {
 
         LogOrErrorSet.get_instance().push_log('亚马逊数据处理开始', { title: true, });
 
+        const primary_domain = this.amazon_domains?.[0] || '';
+        if (!primary_domain) {
+            LogOrErrorSet.get_instance().push_log('未配置亚马逊站点域名，请在配置管理中添加', { title: true, error: true, });
+            this.thenFn?.({ sku_data: this.sku_data, sku_map: this.sku_map, });
+            return;
+        }
+
+        // 主站点：完整采集
         if (this.assign_skus.length) {
             this.handle_assign_skus();
         }
         else {
-            await this.fetch_all_sku(this.collection_urls.map(ii => `${this.domain}${ii}`));
+            await this.fetch_all_sku(this.collection_urls.map(ii => `${primary_domain.domain}${ii}`));
         }
-        await this.for_fetch_sku_detail(`${this.domain}${this.product_url}`);
+        await this.for_fetch_sku_detail(`${primary_domain.domain}${this.product_url}`, primary_domain.site);
+
+        // 其他站点：仅检测状态
+        for (let i = 1; i < this.amazon_domains.length; i++) {
+            const domain_item = this.amazon_domains[i];
+            await this.check_other_site_status(domain_item);
+        }
 
         this.thenFn?.({ sku_data: this.sku_data, sku_map: this.sku_map, });
         LogOrErrorSet.get_instance().push_log(`亚马逊数据处理结束, 总条数${this.sku_data.length} \n ${LogOrErrorSet.get_instance().save_data(this.sku_data)}`, { title: true, });
@@ -128,7 +142,7 @@ export class AmazonAction {
     }
 
     /** 获取每个sku下的详情 */
-    async fetch_sku_detail(url: string, skus: string[]) {
+    async fetch_sku_detail(url: string, skus: string[], site = 'us') {
         const variant_skus: string[] = [];
 
         await parallel(3, skus, async (sku) => {
@@ -223,6 +237,8 @@ export class AmazonAction {
                             map[item.type] = item;
                             return map;
                         }, {} as Record<TParseType, TParseData>);
+                        // 设置站点状态
+                        this.sku_map[sku].status = site;
                     }
 
                     return true;
@@ -243,7 +259,7 @@ export class AmazonAction {
     }
 
     /** 循环执行 fetch_sku_detail 的逻辑,因为分类页面存在 变体 不显示的情况 */
-    async for_fetch_sku_detail(url: string) {
+    async for_fetch_sku_detail(url: string, site = 'us') {
         if (!this.sku_data.length) return;
 
         LogOrErrorSet.get_instance().push_log('亚马逊产品处理', { title: true, is_fill_row: true, });
@@ -253,7 +269,7 @@ export class AmazonAction {
 
         while (execute) {
             if (skus.length) {
-                const variant_skus = await this.fetch_sku_detail(url, skus);
+                const variant_skus = await this.fetch_sku_detail(url, skus, site);
                 skus = [];
                 variant_skus.forEach((sku) => {
                     this.push_sku(sku) && skus.push(sku);
@@ -266,6 +282,60 @@ export class AmazonAction {
 
         LogOrErrorSet.get_instance().push_log('亚马逊产品处理完成', { repeat: true, });
 
+    }
+
+    /**
+     * 检测其他站点的产品状态 —— 对已知 SKU 访问对应站点页面，检测价格是否可解析。
+     *
+     * 仅用于非主站点（如 CA），不采集完整数据，只维护 status 状态。
+     * 价格可解析 → 追加站点代码到 status；不可访问或无价格 → 不追加。
+     *
+     * @param domain_item - 站点域名配置
+     */
+    async check_other_site_status(domain_item: IAmazonDomainItem) {
+        if (!this.sku_data.length) return;
+
+        LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点状态检测`, { title: true, is_fill_row: true, });
+
+        const skus = this.sku_data.map(ii => ii.sku);
+
+        await parallel(3, skus, async (sku) => {
+            const fullUrl = `${domain_item.domain}${this.product_url}/${sku}?${stringify({ ...this.fixed_params, })}`;
+
+            try {
+                LogOrErrorSet.get_instance().push_log(`检测: ${fullUrl}`, { repeat: true, });
+
+                const res = await retry({ times: this.retry_count, delay: 1000, }, () => core.invoke<string>('task_amazon_product_fetch_html', { url: fullUrl, }));
+                const json_data = JSON.parse(res) as ITauriResponse<string>;
+
+                if (json_data.status === 0 || !json_data.data) {
+                    LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点不可访问: ${sku}`, { repeat: true, });
+                    return;
+                }
+
+                const dom = new DOMParser().parseFromString(json_data.data, 'text/html');
+                const price_data = get_price(dom);
+
+                if (price_data.data && (price_data.data as { price: number }).price > 0) {
+                    // 价格可解析，追加站点代码
+                    const current = this.sku_map[sku].status || '';
+                    const sites = current ? current.split(',').filter(Boolean) : [];
+                    if (!sites.includes(domain_item.site)) {
+                        sites.push(domain_item.site);
+                        this.sku_map[sku].status = sites.join(',');
+                    }
+                    LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点有效: ${sku}`, { repeat: true, });
+                }
+                else {
+                    LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点无价格: ${sku}`, { repeat: true, });
+                }
+            }
+            catch (error) {
+                LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点检测失败: ${sku} \n ${LogOrErrorSet.get_instance().save_error(error)}`, { repeat: true, error: true, });
+            }
+        });
+
+        LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点状态检测完成`, { repeat: true, });
     }
 
 

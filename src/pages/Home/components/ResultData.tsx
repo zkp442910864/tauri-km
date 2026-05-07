@@ -37,10 +37,13 @@ export const ResultData: FC<{result: CompareData[], onClick: (item: unknown) => 
         shopify_store_action: null as null | ShopifyStoreAction,
     });
     const {
-        amazon_domain,
+        amazon_domains,
         shopify_domain,
         shopify_store_url,
     } = GLOBAL_DATA.CURRENT_STORE.config;
+
+    /** 获取主站点域名（第一个配置项），用于 Amazon 链接跳转 */
+    const primary_amazon_domain = amazon_domains?.[0]?.domain ?? 'https://www.amazon.com';
 
     const color_map = {
         add: 'color-success',
@@ -60,7 +63,7 @@ export const ResultData: FC<{result: CompareData[], onClick: (item: unknown) => 
             void open(`${shopify_domain}/products/${item.data.sku}`);
         }
         else {
-            void open(`${amazon_domain}/dp/${item.data.sku}`);
+            void open(`${primary_amazon_domain}/dp/${item.data.sku}`);
         }
     };
 

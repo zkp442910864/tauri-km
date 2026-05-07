@@ -86,9 +86,11 @@ interface IShopifyProductData {
  * Amazon 产品数据 —— 以 SKU 为主键的产品信息。
  * - `detail` —— 解析后的字段数组，用于遍历
  * - `detail_map` —— 字段类型 → 解析数据的映射，用于快速查找
+ * - `status` —— 站点状态，逗号分隔的站点代码（如 'us,ca'），空字符串表示未上架
  */
 interface IAmazonData {
     sku: string;
+    status?: string;
     detail?: TParseData[];
     detail_map?: Record<TParseType, TParseData>;
 }
@@ -147,6 +149,14 @@ interface IOtherData {
     inventory_ca?: number | string;
 }
 
+/** Amazon 站点域名映射项 */
+interface IAmazonDomainItem {
+    /** 站点代码，如 'us'、'ca' */
+    site: string;
+    /** 站点域名，如 'https://www.amazon.com' */
+    domain: string;
+}
+
 interface IConfig {
     name: string;
     config: {
@@ -157,7 +167,7 @@ interface IConfig {
         shopify_store_url: string,
         shopify_domain: string,
 
-        amazon_domain: string,
+        amazon_domains: IAmazonDomainItem[],
         amazon_collection_urls: string[],
     };
 }
@@ -189,5 +199,6 @@ export type {
     IOtherData,
     TParseTypeMsg,
     IConfig,
+    IAmazonDomainItem,
     IReviewData
 };

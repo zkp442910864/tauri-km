@@ -27,7 +27,7 @@ use crate::modules::common_mod::create_folder;
 
 use super::common_mod::v8_to_img;
 use super::{
-    common_mod::{click_point, get_image_v2, page_screenshot, start_browser},
+    common_mod::{click_point, get_image_v2, page_screenshot, start_browser_amazon},
     log_mod::{push_web_log, WebLog},
     other_model::Response,
 };
@@ -128,7 +128,7 @@ pub async fn task_find_amazon_sku(url: String) -> Result<String, String> {
 
     let result = task::spawn_blocking(move || {
         push_web_log(WebLog::new_title("获取亚马逊产品列表:").with_msg_arr(vec![&url]));
-        let tab = start_browser(&url).unwrap();
+        let tab = start_browser_amazon(&url).unwrap();
 
         each_more_data(&tab.0);
         let arr = extract_sku(&tab.0);
@@ -278,7 +278,7 @@ pub async fn task_amazon_product_fetch_html(app: AppHandle, url: String) -> Resu
     };
 
     let result = spawn_blocking(move || {
-        let (tab, browser) = start_browser(&url).unwrap();
+        let (tab, browser) = start_browser_amazon(&url).unwrap();
 
         let mut flag = true;
         let max_count = 3;
