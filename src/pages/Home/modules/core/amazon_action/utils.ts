@@ -41,20 +41,36 @@ export const get_choice = (dom: Document) => {
 export const get_banner_imgs = (dom: Document) => {
     try {
         const js_str = dom.querySelector('#imageBlock+script')?.textContent ?? '';
-        const data = eval(
-            js_str.replace('P.when(\'A\').register("ImageBlockATF",', '(')
-                .replace(' A.trigger(\'P.AboveTheFold\');', '')
-                .replace('return data;\n});', 'return data;\n})();')
-                .replace('A.$.parseJSON', 'JSON.parse')
-                .trim()
-        ) as {colorImages: {initial: {hiRes?: string, large: string}[]}};
-        // console.log(data);
+
+        // 使用正则定位 data 对象起始位置，兼容新旧两种脚本结构
+        const match = js_str.match(/var\s+data\s*=\s*\{/);
+        if (!match || match.index === undefined) throw new Error('Could not find data object');
+
+        const objectStart = match.index + match[0].length - 1; // '{' 的位置
+
+        // 通过花括号计数提取完整的 data 对象（处理嵌套花括号）
+        let depth = 0;
+        let objectEnd = -1;
+        for (let i = objectStart; i < js_str.length; i++) {
+            if (js_str[i] === '{') depth++;
+            if (js_str[i] === '}') {
+                depth--;
+                if (depth === 0) {
+                    objectEnd = i + 1;
+                    break;
+                }
+            }
+        }
+
+        if (objectEnd === -1) throw new Error('Could not find end of data object');
+
+        const dataStr = js_str.substring(objectStart, objectEnd);
+        const data = eval(`(${dataStr})`) as {colorImages: {initial: {hiRes?: string, large: string}[]}};
+
         return new IHtmlParseData('get_banner_imgs', data.colorImages.initial.map(ii => ii.hiRes || ii.large));
     }
     catch (error) {
-        // console.error(error);
         return new IHtmlParseData('get_banner_imgs', [], 'get_banner_imgs 解析失败', error);
-
     }
 };
 

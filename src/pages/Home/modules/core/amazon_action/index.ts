@@ -34,6 +34,7 @@ export class AmazonAction {
     product_url = '/dp';
     fixed_params = {
         language: 'en_US',
+        currency: 'USD',
     };
     thenFn?: (data: TThenData) => void;
     catchFn?: (err: unknown) => void;

@@ -185,14 +185,14 @@ pub fn page_screenshot(app: AppHandle, tab: &Arc<Tab>, url: String, html: &Strin
     let path_url = create_folder(app, "page-content".to_string());
     let file_html_name = format!(
         "{}.html",
-        url.replace("?language=en_US", "")
+        url.replace("?language=en_US&currency=USD", "")
             .split("/")
             .last()
             .unwrap()
     );
     let file_img_name = format!(
         "{}.png",
-        url.replace("?language=en_US", "")
+        url.replace("?language=en_US&currency=USD", "")
             .split("/")
             .last()
             .unwrap()
