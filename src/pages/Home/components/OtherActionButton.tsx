@@ -8,6 +8,7 @@ import { confirm, log_error } from '@/utils';
 import { DB_NAME, reset_database, table } from '../modules/database';
 import { AmazonAction } from '../modules/core/amazon_action';
 import { amazon_choice_fn } from './AmazonChoice';
+import { config_editor_fn } from './ConfigEditor';
 
 /**
  * 其他操作按钮组件 —— 提供下拉菜单形式的辅助操作集合。
@@ -34,6 +35,10 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}>
         <Dropdown
             menu={{
                 items: [
+                    {
+                        key: 'open_config_editor',
+                        label: '配置管理',
+                    },
                     {
                         key: 'shopify_in_sql_data',
                         label: 'shopify数据写入库',
@@ -102,6 +107,9 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}>
                             }
                             else if (key === 'open_amazon_choice') {
                                 await amazon_choice_fn();
+                            }
+                            else if (key === 'open_config_editor') {
+                                await config_editor_fn();
                             }
                         });
                         void setLoading(false);

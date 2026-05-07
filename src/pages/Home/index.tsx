@@ -17,8 +17,6 @@ import { store, store_init } from './modules/store';
 import { TestButton } from './components/TestButton';
 import { OtherActionButton } from './components/OtherActionButton';
 import { init_database, table } from './modules/database';
-import { open } from '@tauri-apps/plugin-dialog';
-import { BaseDirectory, readTextFile } from '@tauri-apps/plugin-fs';
 import { IConfig } from './modules/types/index.type';
 import { GLOBAL_DATA } from './modules/global_data';
 
@@ -26,34 +24,26 @@ import { GLOBAL_DATA } from './modules/global_data';
  * 应用初始化流程 —— 加载配置、初始化数据库和 Shopify API。
  *
  * 流程：
- * 1. 从 Tauri Store 读取配置列表，若无则弹出文件选择器让用户选择 JSON 配置文件
+ * 1. 从 Tauri Store 读取配置列表，若无则使用默认空配置并写入 Store
  * 2. 初始化数据库（创建表结构）
  * 3. 初始化 Shopify Admin API（设置 access_token 和 store_url）
- * 4. 将配置写入 GLOBAL_DATA（一次性写入，后续只读）
+ * 4. 将配置写入 GLOBAL_DATA（一次性写入，后续通过配置弹窗修改）
+ *
+ * 用户可通过「其他 → 配置管理」手动编辑配置，保存后实时生效。
  */
 const init_promise = (async () => {
     const confirm_config_data = async () => {
         let record_data = await store.get_val<IConfig[]>('configs');
-        if (record_data) {
-            //
-        }
-        else {
-            const file_path = await open({
-                title: '配置文件',
-                multiple: false,
-                directory: false,
-                filters: [
-                    { name: 'filter', extensions: ['json',], },
-                ],
-            });
-            if (!file_path) return [];
-
-            const json = await readTextFile(file_path, { baseDir: BaseDirectory.AppCache, });
-            record_data = JSON.parse(json) as IConfig[];
+        if (!record_data) {
+            // 首次启动无配置，使用默认空配置并持久化
+            record_data = [GLOBAL_DATA.CURRENT_STORE,];
             await store.set_val('configs', record_data);
         }
 
-        GLOBAL_DATA.CURRENT_STORE = record_data.find(ii => ii.name === 'chonchow')!;
+        const current = record_data.find(ii => ii.name === GLOBAL_DATA.CURRENT_STORE.name);
+        if (current) {
+            GLOBAL_DATA.CURRENT_STORE = current;
+        }
     };
 
     await store_init();
