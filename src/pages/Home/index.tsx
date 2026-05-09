@@ -1,7 +1,7 @@
 
 import { useCacheValue, useStateExtend } from '@/hooks';
 import { LogOrErrorSet } from '@/utils';
-import { Button, Input, Splitter } from 'antd';
+import { Button, Input, Select, Splitter } from 'antd';
 import { useRef } from 'react';
 import { ContentBox } from './components/ContentBox';
 import { DataQuery } from './components/DataQuery';
@@ -43,6 +43,7 @@ const init_promise = (async () => {
         const current = record_data.find(ii => ii.name === GLOBAL_DATA.CURRENT_STORE.name);
         if (current) {
             GLOBAL_DATA.CURRENT_STORE = current;
+            console.log(current);
         }
     };
 
@@ -64,10 +65,11 @@ const init_promise = (async () => {
  * - 代码预览：RenderCode 高亮展示 JSON/TS 数据
  * - 辅助操作：OtherActionButton 提供数据库管理、文件操作等
  */
-const Home = () => {
+const HomeInline = () => {
 
     const [, update,] = useStateExtend({});
     const [assign_skus, set_assign_skus,] = useCacheValue('assign_skus', '');
+    const [current_site, set_current_site,] = useCacheValue('current_site', 'us');
     const { current: state, } = useRef({
         result: [] as CompareData[],
         // assign_skus: '',
@@ -87,7 +89,7 @@ const Home = () => {
     };
 
     const _amazon_fn = async () => {
-        const data = await new AmazonAction(assign_skus_to_arr());
+        const data = await new AmazonAction(assign_skus_to_arr(), current_site);
         console.log(data);
     };
 
@@ -123,7 +125,8 @@ const Home = () => {
             // const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
             // debugger;
             const shopify_data = await table.shopify_product.get_data(where);
-            const amazon_data = await table.amazon_product.get_data(where);
+            const amazon_where = [`site='${current_site}'`, skus.length ? `sku in (${skus.map(sku => '"' + sku + '"').join()})` : ''].filter(Boolean).join(' and ');
+            const amazon_data = await table.amazon_product.get_data(amazon_where);
 
             const data = await new Compare(amazon_data, shopify_data).start();
             // console.log(data);
@@ -136,7 +139,7 @@ const Home = () => {
     };
 
     return (
-        <AwaitComponent promise={init_promise}>
+        <>
             <div className="p-t-20">
                 <div id="hidden-text" className="un-w-0 un-h-0 un-opacity0"></div>
                 <div className="flex un-gap-8px p-x-20">
@@ -151,8 +154,17 @@ const Home = () => {
                             void set_assign_skus(e.target.value);
                         }}
                     />
+                    <Select
+                        className="un-w-120px"
+                        value={current_site}
+                        onChange={(val) => void set_current_site(val)}
+                    >
+                        {GLOBAL_DATA.CURRENT_STORE.config.amazon_domains.map(d => (
+                            <Select.Option key={d.site} value={d.site}>{d.site}</Select.Option>
+                        ))}
+                    </Select>
                     <Button type="primary" onClick={() => void action()}>运行(需要数据入库)</Button>
-                    <OtherActionButton assign_skus={assign_skus_to_arr()} >
+                    <OtherActionButton assign_skus={assign_skus_to_arr()} site={current_site}>
                         其他
                     </OtherActionButton>
                     <TestButton>test</TestButton>
@@ -194,8 +206,12 @@ const Home = () => {
                     </Splitter>
                 </ContentBox>
             </div>
-        </AwaitComponent>
+        </>
     );
+};
+
+const Home = () => {
+    return <AwaitComponent promise={init_promise}><HomeInline/></AwaitComponent>;
 };
 
 export default Home;

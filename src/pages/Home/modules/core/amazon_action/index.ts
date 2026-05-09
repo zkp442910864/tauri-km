@@ -11,18 +11,18 @@ import { table } from '../../database';
  * Amazon 数据采集器 —— 通过 headless_chrome 抓取 Amazon 产品页面。
  *
  * 采集流程：
- * 1. 获取 SKU 列表（从品牌集合页面抓取，或使用指定的 `assign_skus`）
- * 2. 逐 SKU 抓取产品详情页 HTML（通过 Tauri 命令 `task_amazon_product_fetch_html`）
- * 3. 解析 HTML 提取各字段数据（标题、价格、图片、描述、评论等）
- * 4. 补充变体 SKU（从 `dimensionValuesDisplayData` 中提取）
- * 5. 数据存入 SQLite `amazon_product` 表
- * 6. 以主站点（第一个域名）数据为准，其他站点仅维护 status 状态
+ * 1. 根据指定站点（`site`）查找对应域名配置
+ * 2. 获取 SKU 列表（从品牌集合页面抓取，或使用指定的 `assign_skus`）
+ * 3. 逐 SKU 抓取产品详情页 HTML（通过 Tauri 命令 `task_amazon_product_fetch_html`）
+ * 4. 解析 HTML 提取各字段数据（标题、价格、图片、描述、评论等）
+ * 5. 补充变体 SKU（从 `dimensionValuesDisplayData` 中提取）
+ * 6. 数据存入 SQLite `amazon_product` 表
  *
  * 价格策略：自动 +$2 加价（`get_price` 中实现）
  *
  * @example
  * ```ts
- * const action = new AmazonAction([]); // 全量采集
+ * const action = new AmazonAction([], 'us'); // 全量采集美国站
  * action.thenFn = (data) => console.log('采集完成:', data.sku_data.length);
  * ```
  */
@@ -43,40 +43,42 @@ export class AmazonAction {
     sku_map: Record<string, IAmazonData> = {};
     /** 重试次数 */
     retry_count = 3;
+    /** 当前采集站点代码 */
+    site: string;
+    /** 当前站点域名配置 */
+    current_domain: IAmazonDomainItem | undefined;
 
-    constructor(assign_skus: string[]) {
+    /**
+     * @param assign_skus - 指定的 SKU 列表，为空则全量采集
+     * @param site - 站点代码（如 'us'、'ca'），默认 'us'
+     */
+    constructor(assign_skus: string[], site = 'us') {
         this.assign_skus = assign_skus;
+        this.site = site;
+        this.current_domain = this.amazon_domains.find(d => d.site === site);
         void this.init();
     }
 
     async init() {
 
-        LogOrErrorSet.get_instance().push_log('亚马逊数据处理开始', { title: true, });
+        LogOrErrorSet.get_instance().push_log(`亚马逊数据处理开始 [站点: ${this.site.toUpperCase()}]`, { title: true, });
 
-        const primary_domain = this.amazon_domains?.[0] || '';
-        if (!primary_domain) {
-            LogOrErrorSet.get_instance().push_log('未配置亚马逊站点域名，请在配置管理中添加', { title: true, error: true, });
+        if (!this.current_domain) {
+            LogOrErrorSet.get_instance().push_log(`未找到站点 ${this.site} 的域名配置，请在配置管理中添加`, { title: true, error: true, });
             this.thenFn?.({ sku_data: this.sku_data, sku_map: this.sku_map, });
             return;
         }
 
-        // 主站点：完整采集
         if (this.assign_skus.length) {
             this.handle_assign_skus();
         }
         else {
-            await this.fetch_all_sku(this.collection_urls.map(ii => `${primary_domain.domain}${ii}`));
+            await this.fetch_all_sku(this.collection_urls.map(ii => `${this.current_domain!.domain}${ii}`));
         }
-        await this.for_fetch_sku_detail(`${primary_domain.domain}${this.product_url}`, primary_domain.site);
-
-        // 其他站点：仅检测状态
-        for (let i = 1; i < this.amazon_domains.length; i++) {
-            const domain_item = this.amazon_domains[i];
-            await this.check_other_site_status(domain_item);
-        }
+        await this.for_fetch_sku_detail(`${this.current_domain.domain}${this.product_url}`, this.site);
 
         this.thenFn?.({ sku_data: this.sku_data, sku_map: this.sku_map, });
-        LogOrErrorSet.get_instance().push_log(`亚马逊数据处理结束, 总条数${this.sku_data.length} \n ${LogOrErrorSet.get_instance().save_data(this.sku_data)}`, { title: true, });
+        LogOrErrorSet.get_instance().push_log(`亚马逊数据处理结束 [站点: ${this.site.toUpperCase()}], 总条数${this.sku_data.length} \n ${LogOrErrorSet.get_instance().save_data(this.sku_data)}`, { title: true, });
     }
 
     push_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
@@ -85,6 +87,21 @@ export class AmazonAction {
             const new_sku_item = { sku: key, };
             sku_map[key] = new_sku_item;
             sku_data.push(new_sku_item);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+
+    del_sku(sku: string, sku_data = this.sku_data, sku_map = this.sku_map) {
+        const key = sku.toLocaleUpperCase();
+        if (sku_map[key]) {
+            const index = sku_data.findIndex(item => item.sku === key);
+            if (index !== -1) {
+                sku_data.splice(index, 1);
+            }
+            delete sku_map[key];
             return true;
         }
         else {
@@ -168,10 +185,23 @@ export class AmazonAction {
                     // 好像会出现动态加载的情况,所以延迟下
                     await sleep(fail_count);
 
+                    // 还原真实 sku, 可能出现自动重定向
+                    const original_sku = dom.querySelector<HTMLInputElement>('input[name=ASIN]')?.value;
+                    if (original_sku && original_sku != sku) {
+                        // delete this.sku_map[sku];
+                        // this.sku_map[original_sku] = { sku: original_sku, };
+                        this.del_sku(sku);
+                        this.push_sku(original_sku);
+                        sku = original_sku;
+                        // debugger;
+                        LogOrErrorSet.get_instance().push_log(`还原真实 SKU: ${sku} -> ${original_sku}`, { repeat: true, is_fill_row: true, });
+                    }
+
                     // 补充缺失变体sku
                     {
                         try {
                             const data = get_model(dom);
+                            delete data[sku];
                             Object.keys(data).forEach((sku) => {
                                 inline_variant_skus.push(sku);
                             });
@@ -237,8 +267,8 @@ export class AmazonAction {
                             map[item.type] = item;
                             return map;
                         }, {} as Record<TParseType, TParseData>);
-                        // 设置站点状态
-                        this.sku_map[sku].status = site;
+                        // 设置站点
+                        this.sku_map[sku].site = site;
                     }
 
                     return true;
@@ -283,61 +313,6 @@ export class AmazonAction {
         LogOrErrorSet.get_instance().push_log('亚马逊产品处理完成', { repeat: true, });
 
     }
-
-    /**
-     * 检测其他站点的产品状态 —— 对已知 SKU 访问对应站点页面，检测价格是否可解析。
-     *
-     * 仅用于非主站点（如 CA），不采集完整数据，只维护 status 状态。
-     * 价格可解析 → 追加站点代码到 status；不可访问或无价格 → 不追加。
-     *
-     * @param domain_item - 站点域名配置
-     */
-    async check_other_site_status(domain_item: IAmazonDomainItem) {
-        if (!this.sku_data.length) return;
-
-        LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点状态检测`, { title: true, is_fill_row: true, });
-
-        const skus = this.sku_data.map(ii => ii.sku);
-
-        await parallel(3, skus, async (sku) => {
-            const fullUrl = `${domain_item.domain}${this.product_url}/${sku}?${stringify({ ...this.fixed_params, })}`;
-
-            try {
-                LogOrErrorSet.get_instance().push_log(`检测: ${fullUrl}`, { repeat: true, });
-
-                const res = await retry({ times: this.retry_count, delay: 1000, }, () => core.invoke<string>('task_amazon_product_fetch_html', { url: fullUrl, }));
-                const json_data = JSON.parse(res) as ITauriResponse<string>;
-
-                if (json_data.status === 0 || !json_data.data) {
-                    LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点不可访问: ${sku}`, { repeat: true, });
-                    return;
-                }
-
-                const dom = new DOMParser().parseFromString(json_data.data, 'text/html');
-                const price_data = get_price(dom);
-
-                if (price_data.data && (price_data.data as { price: number }).price > 0) {
-                    // 价格可解析，追加站点代码
-                    const current = this.sku_map[sku].status || '';
-                    const sites = current ? current.split(',').filter(Boolean) : [];
-                    if (!sites.includes(domain_item.site)) {
-                        sites.push(domain_item.site);
-                        this.sku_map[sku].status = sites.join(',');
-                    }
-                    LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点有效: ${sku}`, { repeat: true, });
-                }
-                else {
-                    LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点无价格: ${sku}`, { repeat: true, });
-                }
-            }
-            catch (error) {
-                LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点检测失败: ${sku} \n ${LogOrErrorSet.get_instance().save_error(error)}`, { repeat: true, error: true, });
-            }
-        });
-
-        LogOrErrorSet.get_instance().push_log(`${domain_item.site.toUpperCase()} 站点状态检测完成`, { repeat: true, });
-    }
-
 
     /** 输出结果 */
     then(fn: typeof this.thenFn) {

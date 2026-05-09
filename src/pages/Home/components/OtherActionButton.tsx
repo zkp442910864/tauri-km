@@ -24,10 +24,12 @@ import { config_editor_fn } from './ConfigEditor';
  *
  * @param children - 按钮内容
  * @param assign_skus - 当前已指定的 SKU 列表（用于筛选操作范围）
+ * @param site - 当前选中的站点代码（如 'us'、'ca'）
  */
-export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}> = ({
+export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[], site: string}> = ({
     children,
     assign_skus,
+    site,
 }) => {
     const [loading, setLoading,] = useStateExtend(false);
 
@@ -35,10 +37,7 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}>
         <Dropdown
             menu={{
                 items: [
-                    {
-                        key: 'open_config_editor',
-                        label: '配置管理',
-                    },
+                  
                     {
                         key: 'shopify_in_sql_data',
                         label: 'shopify数据写入库',
@@ -51,10 +50,10 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}>
                         key: 'amazon_in_sql_data',
                         label: 'amazon数据写入库',
                     },
-                    {
-                        key: 'open_amazon_choice',
-                        label: '亚马逊精选产品',
-                    },
+                    // {
+                    //     key: 'open_amazon_choice',
+                    //     label: '亚马逊精选产品',
+                    // },
                     {
                         key: 'open_sql_file',
                         label: '打开sql文件',
@@ -62,6 +61,10 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}>
                     {
                         key: 'open_web_cache_data_file',
                         label: '打开web_cache_data文件',
+                    },
+                    {
+                        key: 'open_config_editor',
+                        label: '配置管理',
                     },
                     {
                         key: 'reset_db',
@@ -88,7 +91,7 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[]}>
                             else if (key === 'amazon_in_sql_data') {
                                 await confirm(title);
                                 // amazon_domain amazon_collection_urls
-                                const amazon_data = await new AmazonAction(assign_skus);
+                                const amazon_data = await new AmazonAction(assign_skus, site);
                                 await table.amazon_product.push_data(amazon_data.sku_data);
                             }
                             else if (key === 'open_sql_file') {

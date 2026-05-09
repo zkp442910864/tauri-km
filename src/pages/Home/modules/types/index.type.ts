@@ -86,11 +86,11 @@ interface IShopifyProductData {
  * Amazon 产品数据 —— 以 SKU 为主键的产品信息。
  * - `detail` —— 解析后的字段数组，用于遍历
  * - `detail_map` —— 字段类型 → 解析数据的映射，用于快速查找
- * - `status` —— 站点状态，逗号分隔的站点代码（如 'us,ca'），空字符串表示未上架
+ * - `site` —— 站点代码（如 'us'、'ca'），标识数据来源站点
  */
 interface IAmazonData {
     sku: string;
-    status?: string;
+    site?: string;
     detail?: TParseData[];
     detail_map?: Record<TParseType, TParseData>;
 }
