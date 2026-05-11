@@ -120,13 +120,39 @@ src/
     └── error-diagnosis.prompt.md    # 错误诊断
 ```
 
+## Skill 强制调用规则
+
+> ⚠️ **关键约束**：在进行任何代码变更前，**必须先读取对应域的 SKILL.md 文件**，获取领域知识和注意事项后再动手。
+
+### 调用时机
+
+| 变更内容 | 必须读取的 Skill |
+|---------|------------------|
+| Amazon SKU 采集、产品解析、amazon_product 操作 | `.github/skills/amazon/SKILL.md` |
+| Shopify GraphQL API、产品操作、shopify_product 操作 | `.github/skills/shopify/SKILL.md` |
+| Tauri 命令、headless_chrome、Rust 模块、Cargo 依赖 | `.github/skills/tauri-rust/SKILL.md` |
+| React 组件、Hooks、Zustand、UnoCSS、路由 | `.github/skills/react-frontend/SKILL.md` |
+| 变更影响评估、安全边界、工程规范审查 | `.github/skills/harness-boundary/SKILL.md` |
+
+### 执行流程
+
+```
+用户请求 → 判断涉及的业务域 → 读取对应 SKILL.md → 理解领域约束 → 执行代码变更
+```
+
+### 禁止事项
+- 禁止跳过 SKILL.md 直接修改代码
+- 禁止凭记忆修改，必须重新读取最新 SKILL.md 内容
+- 多个域交叉变更时，必须读取所有涉及的 SKILL.md
+
 ## 变更审查清单
 
 在进行任何代码变更前，必须确认：
 
-1. [ ] 变更是否符合对应域的边界规则
-2. [ ] 是否引入了新的外部依赖（需要评估必要性）
-3. [ ] 是否修改了 Tauri 命令接口（需要前后端同步变更）
-4. [ ] 是否涉及敏感数据处理
-5. [ ] 是否有对应的错误处理和日志记录
-6. [ ] 类型定义是否完整（禁止 any）
+1. [ ] **已读取对应域的 SKILL.md**
+2. [ ] 变更是否符合对应域的边界规则
+3. [ ] 是否引入了新的外部依赖（需要评估必要性）
+4. [ ] 是否修改了 Tauri 命令接口（需要前后端同步变更）
+5. [ ] 是否涉及敏感数据处理
+6. [ ] 是否有对应的错误处理和日志记录
+7. [ ] 类型定义是否完整（禁止 any）

@@ -96,11 +96,10 @@ export const TestButton: FC<{children: ReactNode}> = ({ children, }) => {
         //     await db.close();
         //     console.log(db);
         // }
-        {
-            const data = await shopify_admin_api.update_variant_assign_metafield('8674172567740', '44415627526332', 'inventory_detail', JSON.stringify({ a: 1, }));
-            console.log(data);
-
-        }
+        // {
+        //     const data = await shopify_admin_api.update_variant_assign_metafield('8674172567740', '44415627526332', 'inventory_detail', JSON.stringify({ a: 1, }));
+        //     console.log(data);
+        // }
     };
 
     return <></>;

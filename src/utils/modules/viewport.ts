@@ -112,7 +112,3 @@ const setHtmlFontSize = () => {
     document.body.attributeStyleMap.set('font-size', `${baseFontSize / baseDeviceRate}rem`);
     window.addEventListener('resize', fn);
 };
-
-
-type AppType = 'unknown' | 'weChat' | 'weCom' | 'qq';
-type DeviceType = 'unknown' | 'win' | 'macOS' | 'linux' | 'iphone' | 'ipad' | 'android';

@@ -1,6 +1,5 @@
 import { Button, Dropdown } from 'antd';
 import { FC, ReactNode } from 'react';
-import { ShopifyAction } from '../modules/core/shopify_action';
 import { useStateExtend } from '@/hooks';
 import { open } from '@tauri-apps/plugin-shell';
 import { appDataDir, join } from '@tauri-apps/api/path';
@@ -14,13 +13,11 @@ import { config_editor_fn } from './ConfigEditor';
  * 其他操作按钮组件 —— 提供下拉菜单形式的辅助操作集合。
  *
  * 包含以下操作：
- * - Shopify 数据写入库（含/不含库存更新）
  * - Amazon 数据写入库
- * - 亚马逊精选产品查看
  * - 打开数据库文件
  * - 重置数据库
  * - 打开临时文件夹
- * - 打开 Amazon 产品页面
+ * - 配置管理
  *
  * @param children - 按钮内容
  * @param assign_skus - 当前已指定的 SKU 列表（用于筛选操作范围）
@@ -37,23 +34,10 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[], 
         <Dropdown
             menu={{
                 items: [
-                  
-                    {
-                        key: 'shopify_in_sql_data',
-                        label: 'shopify数据写入库',
-                    },
-                    {
-                        key: 'shopify_in_sql_data_not_inventory',
-                        label: 'shopify数据写入库(不更新库存)',
-                    },
                     {
                         key: 'amazon_in_sql_data',
                         label: 'amazon数据写入库',
                     },
-                    // {
-                    //     key: 'open_amazon_choice',
-                    //     label: '亚马逊精选产品',
-                    // },
                     {
                         key: 'open_sql_file',
                         label: '打开sql文件',
@@ -78,19 +62,8 @@ export const OtherActionButton: FC<{children: ReactNode, assign_skus: string[], 
 
                         void setLoading(true);
                         await log_error.capture_error(async () => {
-                            if (key === 'shopify_in_sql_data') {
+                            if (key === 'amazon_in_sql_data') {
                                 await confirm(title);
-                                const shopify_data = await new ShopifyAction(assign_skus, true);
-                                await table.shopify_product.push_data(shopify_data.sku_data, true);
-                            }
-                            else if (key === 'shopify_in_sql_data_not_inventory') {
-                                await confirm(title);
-                                const shopify_data = await new ShopifyAction(assign_skus);
-                                await table.shopify_product.push_data(shopify_data.sku_data);
-                            }
-                            else if (key === 'amazon_in_sql_data') {
-                                await confirm(title);
-                                // amazon_domain amazon_collection_urls
                                 const amazon_data = await new AmazonAction(assign_skus, site);
                                 await table.amazon_product.push_data(amazon_data.sku_data);
                             }

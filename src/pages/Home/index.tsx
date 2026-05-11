@@ -8,15 +8,13 @@ import { DataQuery } from './components/DataQuery';
 import { RenderCode } from './components/RenderCode';
 import { RenderLogs } from './components/RenderLogs';
 import { ResultData } from './components/ResultData';
-import { AmazonAction } from './modules/core/amazon_action';
-import { Compare, CompareData } from './modules/core/compare';
-import { ShopifyAction } from './modules/core/shopify_action';
+import { SyncEngine, SyncResult } from './modules/core/sync_engine';
 import { AwaitComponent } from '@/components/AwaitComponent';
 import { init_shopify_admin_api } from './modules/shopify_admin_api';
 import { store, store_init } from './modules/store';
 import { TestButton } from './components/TestButton';
 import { OtherActionButton } from './components/OtherActionButton';
-import { init_database, table } from './modules/database';
+import { init_database } from './modules/database';
 import { IConfig } from './modules/types/index.type';
 import { GLOBAL_DATA } from './modules/global_data';
 
@@ -58,9 +56,8 @@ const init_promise = (async () => {
  *
  * 功能：
  * - SKU 输入框：支持逗号、空格、换行分隔的多 SKU 输入
- * - 数据采集：触发 Amazon/Shopify 数据采集流程
- * - 数据比对：调用 Compare 引擎对比两边数据
- * - 结果展示：ResultData 组件展示比对结果（add/update/remove/fit/warn）
+ * - 数据同步：通过 SyncEngine 遍历 Amazon 数据，调用 Shopify API 同步
+ * - 结果展示：ResultData 组件展示同步结果（add/update/skip/archived/error）
  * - 日志面板：RenderLogs 实时显示操作日志
  * - 代码预览：RenderCode 高亮展示 JSON/TS 数据
  * - 辅助操作：OtherActionButton 提供数据库管理、文件操作等
@@ -71,8 +68,7 @@ const HomeInline = () => {
     const [assign_skus, set_assign_skus,] = useCacheValue('assign_skus', '');
     const [current_site, set_current_site,] = useCacheValue('current_site', 'us');
     const { current: state, } = useRef({
-        result: [] as CompareData[],
-        // assign_skus: '',
+        result: [] as SyncResult[],
         render_code: '',
         render_type: 'json',
         loading: false,
@@ -81,16 +77,6 @@ const HomeInline = () => {
     const assign_skus_to_arr = () => {
         const new_val = assign_skus.split(/[\s+]?，[\s+]?|[\s+]?,[\s+]?|\s+|[\s+]?\n[\s+]?/).filter(ii => !!ii);
         return new_val;
-    };
-
-    const _shopify_fn = async () => {
-        const data = await new ShopifyAction(assign_skus_to_arr());
-        console.log(data);
-    };
-
-    const _amazon_fn = async () => {
-        const data = await new AmazonAction(assign_skus_to_arr(), current_site);
-        console.log(data);
     };
 
     /** 设置高亮代码 */
@@ -120,21 +106,15 @@ const HomeInline = () => {
         void LogOrErrorSet.get_instance().capture_error(async () => {
             const start = performance.now();
             const skus = assign_skus_to_arr();
-            const where = skus.length ? `sku in (${skus.map(sku => '"' + sku + '"').join()})` : undefined;
-            // const shopify_data = await new ShopifyAction(state.shopify_domain, assign_skus_to_arr());
-            // const amazon_data = await new AmazonAction(state.amazon_domain, state.amazon_collection_urls, assign_skus_to_arr());
-            // debugger;
-            const shopify_data = await table.shopify_product.get_data(where);
-            const amazon_where = [`site='${current_site}'`, skus.length ? `sku in (${skus.map(sku => '"' + sku + '"').join()})` : ''].filter(Boolean).join(' and ');
-            const amazon_data = await table.amazon_product.get_data(amazon_where);
 
-            const data = await new Compare(amazon_data, shopify_data).start();
-            // console.log(data);
-            state.result = data;
+            const engine = new SyncEngine(current_site, skus, { abort_on_error: true });
+            const results = await engine.start();
+
+            state.result = results;
             setLoading(false);
 
             const execute_time = performance.now() - start;
-            LogOrErrorSet.get_instance().push_log(`总计执行: ${execute_time}ms, ${(execute_time / 1000).toFixed(2)}m, ${(execute_time / 1000 / 60).toFixed(2)}m`);
+            LogOrErrorSet.get_instance().push_log(`总计执行: ${execute_time}ms, ${(execute_time / 1000).toFixed(2)}s, ${(execute_time / 1000 / 60).toFixed(2)}m`);
         });
     };
 

@@ -48,6 +48,16 @@
 5. 禁止在 Tauri 命令中 panic
 6. 禁止硬编码敏感信息
 
+## Skill 强制调用规则
+
+> ⚠️ 修改代码前**必须先读取对应域的 SKILL.md**，禁止凭记忆直接修改。
+>
+> - Amazon 域变更 → `.github/skills/amazon/SKILL.md`
+> - Shopify 域变更 → `.github/skills/shopify/SKILL.md`
+> - Tauri/Rust 变更 → `.github/skills/tauri-rust/SKILL.md`
+> - React 前端变更 → `.github/skills/react-frontend/SKILL.md`
+> - 变更影响评估 → `.github/skills/harness-boundary/SKILL.md`
+
 ## 变更影响评估
 
 修改代码前必须考虑：

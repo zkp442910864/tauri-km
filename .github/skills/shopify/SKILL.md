@@ -105,3 +105,19 @@ Shopify 操作依赖配置文件中的:
 2. 页面自动化依赖 DOM 结构，Shopify 后台更新可能导致失效
 3. Cookie 管理涉及安全，禁止明文存储
 4. 新增后台操作需要添加对应的 Tauri 命令
+
+## GraphQL API 重要陷阱
+
+### productUpdate 不支持 images 字段
+- `productCreate` 的 `ProductInput` 支持 `images` 字段 ✅
+- `productUpdate` 的 `ProductInput` **不支持** `images` 字段 ❌（会报 `Field is not defined on ProductInput`）
+- 更新产品图片必须使用 `productCreateMedia` 变更，通过 `media` 参数传入 `{ originalSource, mediaContentType: 'IMAGE' }`
+- 对应方法: `shopify_admin_api.update_product_images(product_id, image_urls)`
+
+### 产品图片全量替换流程
+- `productCreateMedia` 是**追加**操作，不会删除已有图片
+- 全量替换需要三步：
+  1. 查询现有图片: `product(id) { media(first: 50) { nodes { id } } }`
+  2. 删除旧图片: `productDeleteMedia(mediaIds, productId)` → 返回 `deletedMediaIds`
+  3. 添加新图片: `productCreateMedia(media, productId)`
+- `update_product_images` 方法已封装此完整流程

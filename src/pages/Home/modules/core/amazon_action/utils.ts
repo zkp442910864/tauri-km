@@ -93,6 +93,7 @@ export const get_price = (dom: Document) => {
         }
         else if (index === 1) {
             old_price = handle_number(item.innerText.trim().match(/\$([\d.]+)\s?/)?.[1] ?? -1);
+            old_price = +(old_price + 2).toFixed(2);
         }
     });
 
