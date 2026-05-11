@@ -2,6 +2,7 @@ import { IAmazonData, IOtherData } from '../types/index.type';
 import { LogOrErrorSet } from '@/utils';
 import { shopify_admin_api, ShopifyProductBySku } from '../shopify_admin_api';
 import { table } from '../database';
+import { sleep } from 'radash';
 
 /**
  * 同步引擎 —— 遍历 Amazon 数据，通过 Shopify Admin API 自动同步产品。
@@ -440,6 +441,7 @@ export class SyncEngine {
             const amazon_sku_model = (detail_map?.get_sku_model?.data || '') as string;
             if (amazon_sku_model) {
                 // debugger;
+                await sleep(3000);
                 // 新创建的产品默认只有一个选项，查询产品获取 product_options
                 const created_product = await shopify_admin_api.get_product_by_sku(sku);
                 if (created_product) {
