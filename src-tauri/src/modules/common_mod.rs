@@ -356,6 +356,61 @@ pub async fn page_sustain_screenshot(app: AppHandle, url: String) -> Result<Stri
     Response::<String>::new_result(1, None, None)
 }
 
+/// Tauri 命令：通过 reqwest 下载外部图片并返回 base64 编码。
+///
+/// 带 User-Agent、超时、重试机制，适用于 Amazon CDN 等有反爬检测的源。
+///
+/// # 参数
+/// - `url`: 图片 URL
+///
+/// # 返回
+/// Base64 编码的图片二进制数据。
+///
+/// # 错误
+/// 下载失败或重试耗尽时返回错误信息。
+#[command]
+pub async fn task_fetch_image(url: String) -> Result<String, String> {
+    let result = spawn_blocking(move || -> Result<String, String> {
+        let client = blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .build()
+            .map_err(|e| format!("创建 HTTP 客户端失败: {}", e))?;
+
+        let mut last_err = String::new();
+        for attempt in 0..3 {
+            match client.get(&url)
+                .header("Accept", "image/webp,image/apng,image/*,*/*;q=0.8")
+                .send()
+            {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        let bytes = resp
+                            .bytes()
+                            .map_err(|e| format!("读取响应失败: {}", e))?;
+                        use base64::Engine;
+                        return Ok(base64::engine::general_purpose::STANDARD.encode(&bytes));
+                    }
+                    last_err = format!("HTTP {}", resp.status());
+                }
+                Err(e) => {
+                    last_err = format!("{}", e);
+                }
+            }
+            if attempt < 2 {
+                std::thread::sleep(Duration::from_millis(1000 * (attempt + 1) as u64));
+            }
+        }
+        Err(format!("下载图片失败 ({}): {}", url, last_err))
+    })
+    .await;
+
+    match result {
+        Ok(inner) => inner,
+        Err(e) => Err(format!("任务执行失败: {}", e)),
+    }
+}
+
 /// 通过 CSS 选择器定位元素并点击其中心坐标。
 ///
 /// 使用 `getBoundingClientRect` 获取元素位置，偏移 +10px 确保点击在元素内部。

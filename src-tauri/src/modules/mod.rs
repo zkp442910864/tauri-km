@@ -33,6 +33,7 @@ pub use amazon_mod::task_find_amazon_sku;
 pub use common_mod::page_sustain_screenshot;
 pub use common_mod::task_create_folder;
 pub use common_mod::task_download_imgs;
+pub use common_mod::task_fetch_image;
 pub use common_mod::MY_BROWSER;
 pub use common_mod::MY_BROWSER_STATUS;
 

@@ -4,7 +4,8 @@ use std::process::Command;
 use modules::{
     custom_test, page_sustain_screenshot, shopify_mod, take_graphql_client, take_screenshot_v2,
     task_amazon_images_diff, task_amazon_images_diff_v2, task_amazon_product_fetch_html,
-    task_create_folder, task_download_imgs, task_find_amazon_sku, MY_BROWSER, MY_BROWSER_STATUS,
+    task_create_folder, task_download_imgs, task_fetch_image, task_find_amazon_sku, MY_BROWSER,
+    MY_BROWSER_STATUS,
 };
 use std::time::Duration;
 use tauri::{async_runtime::spawn, Manager};
@@ -77,6 +78,7 @@ pub fn run() {
             task_amazon_images_diff,
             task_amazon_images_diff_v2,
             task_download_imgs,
+            task_fetch_image,
             page_sustain_screenshot,
             shopify_mod::task_shopify_store_login,
             shopify_mod::task_shopify_store_login_status,
