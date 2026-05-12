@@ -987,6 +987,137 @@ class ShopifyAdminApi {
     }
 
     /**
+     * 激活变体库存项在指定仓库的可用性（勾选库存地点）。
+     *
+     * 在 `set_inventory_level` 之前调用，确保目标仓库已被勾选激活。
+     * `inventoryActivate` 是幂等操作，已激活时不会产生副作用。
+     *
+     * @param inventory_item_id - 库存项 ID
+     * @param location_id - 仓库位置 ID
+     */
+    async inventoryActivate(inventory_item_id: string, location_id: string): Promise<void> {
+        const idempotency_key = `inv_activate_${inventory_item_id}_${location_id}_${Date.now()}`;
+        const data = await this.get_data<{ data: { inventoryActivate: { inventoryLevel?: { id?: string }; userErrors?: Array<{ field: string[]; message: string }> } } }>(gql(`
+            mutation inventoryActivate($inventoryItemId: ID!, $locationId: ID!, $idempotencyKey: String!) {
+                inventoryActivate(inventoryItemId: $inventoryItemId, locationId: $locationId) @idempotent(key: $idempotencyKey) {
+                    inventoryLevel {
+                        id
+                    }
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        `), {
+            inventoryItemId: this.handle_id(inventory_item_id, 'InventoryItem'),
+            locationId: this.handle_id(location_id, 'Location'),
+            idempotencyKey: idempotency_key,
+        });
+
+        const activate_result = data.data.inventoryActivate;
+        if (activate_result.userErrors?.length) {
+            throw new Error(`inventoryActivate 失败: ${JSON.stringify(activate_result.userErrors)}`);
+        }
+    }
+
+    /**
+     * 获取所有销售渠道 Publication（不限类型）。
+     *
+     * 返回每个 Publication 的 ID 和名称，用于将产品发布到全部渠道。
+     * 包括 Online Store、Shop、POS、Google & YouTube、Inbox 等所有已配置的销售渠道。
+     *
+     * @returns Publication 列表，每项包含 publication_id 和 name
+     */
+    async get_all_publications(): Promise<Array<{ publication_id: string; name: string }>> {
+        const all_publications: Array<{ publication_id: string; name: string }> = [];
+        let cursor: string | undefined;
+
+        const fetch_page = async (after?: string) => {
+            const data = await this.get_data<{ data: { publications: { edges: Array<{ cursor?: string; node?: { id?: string; name?: string } }>; pageInfo: { hasNextPage: boolean } } } }>(gql(`
+                query($after: String) {
+                    publications(first: 50, after: $after) {
+                        edges {
+                            cursor
+                            node {
+                                id
+                                name
+                            }
+                        }
+                        pageInfo {
+                            hasNextPage
+                        }
+                    }
+                }
+            `), {
+                after: after ?? null,
+            });
+
+            const edges = data.data?.publications?.edges ?? [];
+            for (const edge of edges) {
+                if (edge.node?.id) {
+                    all_publications.push({
+                        publication_id: edge.node.id.replace(/^gid.*?(\d+)$/, '$1'),
+                        name: edge.node.name ?? '',
+                    });
+                }
+                cursor = edge.cursor;
+            }
+
+            return data.data?.publications?.pageInfo?.hasNextPage ?? false;
+        };
+
+        let has_more = await fetch_page();
+        while (has_more && cursor) {
+            has_more = await fetch_page(cursor);
+        }
+
+        return all_publications;
+    }
+
+    /**
+     * 将产品发布到所有销售渠道。
+     *
+     * 通过 `get_all_publications` 获取全部 Publication，
+     * 然后调用 `publishablePublish` 批量发布。
+     * 用于创建产品后确保在所有渠道可见。
+     *
+     * @param product_gid - 产品 GID（如 `gid://shopify/Product/123`）
+     */
+    async publish_to_all_channels(product_gid: string): Promise<void> {
+        const publications = await this.get_all_publications();
+        if (!publications.length) {
+            LogOrErrorSet.get_instance().push_log('无可用的销售渠道 Publication', { error: true, });
+            return;
+        }
+
+        const data = await this.get_data<{ data: { publishablePublish: { userErrors?: Array<{ field: string[]; message: string }> } } }>(gql(`
+            mutation PublishablePublish($id: ID!, $input: [PublicationInput!]!) {
+                publishablePublish(id: $id, input: $input) {
+                    userErrors {
+                        field
+                        message
+                    }
+                }
+            }
+        `), {
+            id: product_gid,
+            input: publications.map(pub => ({
+                publicationId: this.handle_id(pub.publication_id, 'Publication'),
+            })),
+        });
+
+        const result = data.data.publishablePublish;
+        if (result.userErrors?.length) {
+            throw new Error(`publish_to_all_channels 失败: ${JSON.stringify(result.userErrors)}`);
+        }
+
+        LogOrErrorSet.get_instance().push_log(
+            `产品已发布到 ${publications.length} 个渠道: ${publications.map(p => p.name).join(', ')}`
+        );
+    }
+
+    /**
      * 批量注册外部图片到 Shopify，返回 Shopify CDN URL。
      *
      * 直接将外部 URL（如 Amazon CDN）传给 Shopify `fileCreate` 的 `originalSource`，
@@ -1120,6 +1251,7 @@ class ShopifyAdminApi {
      * 返回每个 Market Publication 的 ID 和对应市场信息，
      * 用于 SyncEngine 中按站点匹配并发布产品到对应市场。
      *
+     * @deprecated 请使用 {@link get_all_publications} 获取所有渠道
      * @returns Publication 列表，每项包含 publication_id 和 market_name
      */
     async get_market_publications(): Promise<Array<{ publication_id: string; market_name: string }>> {

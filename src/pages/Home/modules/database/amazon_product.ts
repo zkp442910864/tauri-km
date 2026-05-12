@@ -85,6 +85,23 @@ export class AmazonProduct extends CDatabase {
         }, item);
     }
 
+    /**
+     * 仅更新 site 字段（非 US 站点采集时使用）。
+     *
+     * 当 SKU 已存在且新采集的站点不是 US 时，
+     * 只合并 site 字段，不覆盖标题、价格等数据字段。
+     *
+     * @param item - 包含 sku 和合并后的 site 值的产品数据
+     */
+    async update_site_only(item: IAmazonData) {
+        await log_error.capture_error(() => {
+            return db.execute(
+                `update ${this.table_name} set site=$1, update_date=$2 where sku="${item.sku}"`,
+                [item.site ?? 'us', dayjs().format('YYYY-MM-DD HH:mm:ss'),]
+            );
+        }, item);
+    }
+
     async insert_data(item: IAmazonData) {
         const table_keys = [
             'sku',
@@ -125,10 +142,27 @@ export class AmazonProduct extends CDatabase {
         await log_error.capture_error(async () => {
 
             for (const item of data) {
-                const result = await db.select(`select sku from ${this.table_name} where sku=$1`, [item.sku,]);
+                const incoming_site = (item.site ?? 'us').toLowerCase();
+                const result: Array<{ sku: string; site: string }> = await db.select(
+                    `select sku, site from ${this.table_name} where sku=$1`,
+                    [item.sku,]
+                );
 
-                if ((result as []).length) {
-                    await this.update_data(item);
+                if (result.length) {
+                    // 合并站点：读取数据库中已有的 site，与新 item 的 site 去重后逗号拼接
+                    const existing_sites = (result[0].site ?? '').split(',').map(s => s.trim()).filter(Boolean);
+                    const new_sites = incoming_site.split(',').map(s => s.trim()).filter(Boolean);
+                    const merged_sites = [...new Set([...existing_sites, ...new_sites,]),];
+                    item.site = merged_sites.join(',');
+
+                    if (incoming_site.includes('us')) {
+                        // US 站点采集的数据为权威标准，全量更新所有数据字段
+                        await this.update_data(item);
+                    }
+                    else {
+                        // 非 US 站点仅补充 site 字段，不覆盖其他数据
+                        await this.update_site_only(item);
+                    }
                 }
                 else {
                     await this.insert_data(item);
@@ -139,7 +173,7 @@ export class AmazonProduct extends CDatabase {
         });
     }
 
-    async get_data(where?: string) {
+    async get_data(where?: string, params?: unknown[]) {
         const table_keys = [
             'sku',
 
@@ -162,7 +196,8 @@ export class AmazonProduct extends CDatabase {
             'amazon_product_collections',
         ];
         const result: (Record<TParseType | 'sku', string> & { site: string })[] = await db.select(
-            `select ${table_keys.join()}, site from ${this.table_name} where site != '' ${where ? 'and ' + where : ''}`
+            `select ${table_keys.join()}, site from ${this.table_name} where site != '' ${where ? 'and ' + where : ''}`,
+            params
         );
 
         const new_result = result.map((raw_item) => {

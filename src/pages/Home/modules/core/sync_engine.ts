@@ -94,13 +94,23 @@ export class SyncEngine {
      * 从 amazon_product 表加载数据。
      */
     private async load_amazon_data(): Promise<IAmazonData[]> {
-        const conditions: string[] = [`site='${this.site}'`,];
+        const conditions: string[] = [];
+        const params: unknown[] = [];
+        // 支持多站点逗号拼接匹配：site 字段可能为 'us,ca' 等格式
+        const site_list = this.site.split(',').map(s => s.trim()).filter(Boolean);
+        if (site_list.length) {
+            const site_conditions = site_list.map((s, _i) => {
+                params.push(s);
+                return `INSTR(site, $${params.length}) > 0`;
+            });
+            conditions.push(`(${site_conditions.join(' or ')})`);
+        }
         if (this.assign_skus.length) {
             const sku_list = this.assign_skus.map(s => `"${s}"`).join(',');
             conditions.push(`sku in (${sku_list})`);
         }
         const where = conditions.join(' and ');
-        return (await table.amazon_product.get_data(where)).sku_data;
+        return (await table.amazon_product.get_data(where, params)).sku_data;
     }
 
     /**
@@ -441,7 +451,7 @@ export class SyncEngine {
             const amazon_sku_model = (detail_map?.get_sku_model?.data || '') as string;
             if (amazon_sku_model) {
                 // debugger;
-                await sleep(3000);
+                await sleep(10000);
                 // 新创建的产品默认只有一个选项，查询产品获取 product_options
                 const created_product = await shopify_admin_api.get_product_by_sku(sku);
                 if (created_product) {
@@ -576,8 +586,19 @@ export class SyncEngine {
         // 确保库存已设置（补充字段失败时作为兜底）
         await this.set_site_inventory(result.variant_id, amazon_item.site);
 
-        // 验证并发布到对应市场 —— 因 Shopify 权限问题暂时禁用
-        // await this.verify_market_publication(result.product_id, amazon_item.site);
+        // 发布到所有销售渠道
+        try {
+            const product_gid = result.product_id.startsWith('gid://')
+                ? result.product_id
+                : `gid://shopify/Product/${result.product_id}`;
+            await shopify_admin_api.publish_to_all_channels(product_gid);
+        }
+        catch (error) {
+            LogOrErrorSet.get_instance().push_log(
+                `产品 ${sku} 发布到所有渠道失败: ${LogOrErrorSet.get_instance().save_error(error)}`,
+                { error: true, }
+            );
+        }
 
         return {
             sku,
@@ -620,8 +641,19 @@ export class SyncEngine {
             // 2. 复用 update_product_if_needed 同步所有字段
             const result = await this.update_product_if_needed(amazon_item, archived_product);
 
-            // 3. 验证并发布到对应市场 —— 因 Shopify 权限问题暂时禁用
-            // await this.verify_market_publication(archived_product.product_gid, amazon_item.site);
+            // 3. 发布到所有销售渠道
+            try {
+                const product_gid = archived_product.product_gid.startsWith('gid://')
+                    ? archived_product.product_gid
+                    : `gid://shopify/Product/${archived_product.product_id}`;
+                await shopify_admin_api.publish_to_all_channels(product_gid);
+            }
+            catch (error) {
+                LogOrErrorSet.get_instance().push_log(
+                    `重新激活产品 ${sku} 发布到所有渠道失败: ${LogOrErrorSet.get_instance().save_error(error)}`,
+                    { error: true, }
+                );
+            }
 
             return {
                 ...result,
@@ -954,6 +986,7 @@ export class SyncEngine {
         // console.log('amazon_item', amazon_item);
         // console.log('shopify_product', shopify_product);
         // debugger;
+        // await this.set_site_inventory(shopify_product.variant_id, amazon_item.site);
 
         // 无变更 → 跳过
         if (!changed_fields.length) {
@@ -1114,50 +1147,55 @@ export class SyncEngine {
      * 设置站点库存。
      *
      * 根据 Amazon 数据的 site 字段，将库存分配到对应的 Shopify 仓库。
+     * 支持多站点逗号拼接格式（如 'us,ca'），会为每个站点分别设置库存。
      * us → US 仓库, ca → CA 仓库。
      *
      * @param variant_id - Shopify 变体 ID
-     * @param site - Amazon 站点代码
+     * @param site - Amazon 站点代码（支持逗号拼接，如 'us,ca'）
      */
     private async set_site_inventory(variant_id: string, site?: string): Promise<void> {
-        const target_site = (site || this.site).toLowerCase();
-        const location_id = this.location_cache[target_site];
+        const site_list = (site || this.site).split(',').map(s => s.trim()).filter(Boolean);
 
-        if (!location_id) {
-            LogOrErrorSet.get_instance().push_log(`未找到站点 ${target_site} 对应的仓库位置`, { error: true, });
-            return;
-        }
+        for (const target_site of site_list) {
+            const location_id = this.location_cache[target_site];
 
-        try {
-            // 通过变体查询获取 inventory_item_id
-            const variant_data = await shopify_admin_api.get_data<{ data: { productVariant: { inventoryItem: { id: string } } } }>(`
-                query($id: ID!) {
-                    productVariant(id: $id) {
-                        inventoryItem {
-                            id
-                        }
-                    }
-                }
-            `, {
-                id: `gid://shopify/ProductVariant/${variant_id}`,
-            });
-
-            const inv_item_gid = variant_data.data.productVariant.inventoryItem?.id;
-            if (!inv_item_gid) {
-                LogOrErrorSet.get_instance().push_log(`无法获取变体 ${variant_id} 的 inventory_item_id`, { error: true, });
-                return;
+            if (!location_id) {
+                LogOrErrorSet.get_instance().push_log(`未找到站点 ${target_site} 对应的仓库位置`, { error: true, });
+                continue;
             }
 
-            const inv_item_id = inv_item_gid.replace(/^gid.*?(\d+)$/, '$1');
+            try {
+                // 通过变体查询获取 inventory_item_id
+                const variant_data = await shopify_admin_api.get_data<{ data: { productVariant: { inventoryItem: { id: string } } } }>(`
+                    query($id: ID!) {
+                        productVariant(id: $id) {
+                            inventoryItem {
+                                id
+                            }
+                        }
+                    }
+                `, {
+                    id: `gid://shopify/ProductVariant/${variant_id}`,
+                });
 
-            // 设置库存为 100（默认值）
-            await shopify_admin_api.set_inventory_level(inv_item_id, location_id, 100);
-        }
-        catch (error) {
-            LogOrErrorSet.get_instance().push_log(
-                `设置库存失败 (variant:${variant_id}, ${target_site}): ${LogOrErrorSet.get_instance().save_error(error)}`,
-                { error: true, }
-            );
+                const inv_item_gid = variant_data.data.productVariant.inventoryItem?.id;
+                if (!inv_item_gid) {
+                    LogOrErrorSet.get_instance().push_log(`无法获取变体 ${variant_id} 的 inventory_item_id`, { error: true, });
+                    continue;
+                }
+
+                const inv_item_id = inv_item_gid.replace(/^gid.*?(\d+)$/, '$1');
+
+                // 先激活库存地点（勾选对应地区），再设置库存数量
+                await shopify_admin_api.inventoryActivate(inv_item_id, location_id);
+                await shopify_admin_api.set_inventory_level(inv_item_id, location_id, 100);
+            }
+            catch (error) {
+                LogOrErrorSet.get_instance().push_log(
+                    `设置库存失败 (variant:${variant_id}, ${target_site}): ${LogOrErrorSet.get_instance().save_error(error)}`,
+                    { error: true, }
+                );
+            }
         }
     }
 }
